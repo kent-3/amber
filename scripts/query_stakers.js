@@ -44,7 +44,7 @@ for (let i = 0; i < validators.length; i++) {
         }
     }
     normal_count = delegations.length
-    console.log(`${validators[i].description.moniker}: ${count.length}`)
+    // console.log(`${validators[i].description.moniker}: ${count.length}`)
 }
 
 // Bonus for AmberDAO
@@ -68,9 +68,9 @@ bonus_count = count.length
 console.log(`${validators[18].description.moniker}: ${count.length}`)
 
 console.log(`\n${operatorAddresses.length} validators were queried`)
-console.log(`There are ${delegations.length} delegators meet the criteria (warning: not accounting for same address staking to multiple validators)`)
-console.log(normal_count)
-console.log(bonus_count)
+console.log(`There are ${delegations.length} delegators meet the criteria`)
+console.log(`${normal_count} normal stakers`)
+console.log(`${bonus_count} AmberDAO stakers`)
 console.log(`Total AMBER payout = ${normal_count * 0.25 + bonus_count * 0.35}`);
 fs.writeFileSync("snapshot/00-bech32.toml",TOML.stringify(result))
 fs.writeFileSync("snapshot/00-bech32-bonus.toml",TOML.stringify(bonus))

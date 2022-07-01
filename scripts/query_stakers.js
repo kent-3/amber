@@ -40,11 +40,11 @@ for (let i = 0; i < validators.length; i++) {
             if (!delegations.includes(address)) {
                 delegations.push(address)
             }
-            result[address] = 0.25    // duplicate addresses are overwritten each loop
+            result[address] = 250000    // duplicate addresses are overwritten each loop
         }
     }
     normal_count = delegations.length
-    // console.log(`${validators[i].description.moniker}: ${count.length}`)
+    console.log(`${validators[i].description.moniker}: ${count.length}`)
 }
 
 // Bonus for AmberDAO
@@ -60,8 +60,8 @@ for (let j = 0; j < delegation.delegationResponses.length; j++) {
         if (!delegations.includes(address)) {
             delegations.push(address)
         }
-        result[address] = 0.5
-        bonus[address] = 0.5
+        result[address] = 350000
+        bonus[address] = 350000
     }
 }
 bonus_count = count.length
@@ -71,7 +71,7 @@ console.log(`\n${operatorAddresses.length} validators were queried`)
 console.log(`There are ${delegations.length} delegators meet the criteria`)
 console.log(`${normal_count} normal stakers`)
 console.log(`${bonus_count} AmberDAO stakers`)
-console.log(`Total AMBER payout = ${normal_count * 0.25 + bonus_count * 0.35}`);
+console.log(`Total uAMBER payout = ${normal_count * 250000 + bonus_count * 350000}`);
 fs.writeFileSync("snapshot/00-bech32.toml",TOML.stringify(result))
 fs.writeFileSync("snapshot/00-bech32-bonus.toml",TOML.stringify(bonus))
 

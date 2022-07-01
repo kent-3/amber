@@ -97,7 +97,7 @@ class MerkleTree:
 
 @cached('snapshot_secret/01-balances.toml')
 def step_01():
-    os.system("node scripts/bech32_to_bytes.js")
+    os.system("node scripts/bech32_to_bytes.cjs")
     balances = toml.load("snapshot/00-bytes.toml")
 
     return balances

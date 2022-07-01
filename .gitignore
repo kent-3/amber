@@ -27,4 +27,5 @@ typings/
 
 # misc
 snapshot/
+snapshot_secret/
 package-lock.json

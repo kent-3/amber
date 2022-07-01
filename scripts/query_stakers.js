@@ -16,10 +16,18 @@ const { validators } = await secretjs.query.staking.validators({ status: "BOND_S
 let operatorAddresses = []
 let delegations = []
 let result = {}
+let bonus = {}
+let normal_count
+let bonus_count
 
 // For each validator, get all delegator addresses
 for (let i = 0; i < validators.length; i++) {
     let validator_address = validators[i].operatorAddress
+    if (validators[i].commission.commissionRates.rate == "0" 
+        || ["AmberDAO", "Kraken", "Staked", "Chorus One", "B-Harvest", "figment", "Outlier Ventures", "Huobi", "HashQuark"]
+        .includes(validators[i].description.moniker)) {
+        continue
+    }
     operatorAddresses.push(validator_address)
     let delegation = await secretjs.query.staking.validatorDelegations({validatorAddr: validator_address, pagination: {limit:'1000000'}}, new grpc.Metadata({"x-cosmos-block-height": "4008888"}))
     let count = []
@@ -29,18 +37,42 @@ for (let i = 0; i < validators.length; i++) {
             let address = delegation.delegationResponses[j].delegation.delegatorAddress
             let amount = delegation.delegationResponses[j].balance.amount / 1000000
             count.push(address)
-            delegations.push(address)
-            result[address] = amount    // duplicate addresses are overwritten each loop
+            if (!delegations.includes(address)) {
+                delegations.push(address)
+            }
+            result[address] = 0.25    // duplicate addresses are overwritten each loop
         }
     }
+    normal_count = delegations.length
     console.log(`${validators[i].description.moniker}: ${count.length}`)
 }
 
+// Bonus for AmberDAO
+let validator_address = validators[18].operatorAddress
+operatorAddresses.push(validator_address)
+let delegation = await secretjs.query.staking.validatorDelegations({validatorAddr: validator_address, pagination: {limit:'1000000'}}, new grpc.Metadata({"x-cosmos-block-height": "4008888"}))
+let count = []
+for (let j = 0; j < delegation.delegationResponses.length; j++) {
+    if ((delegation.delegationResponses[j].balance.amount / 1000000) >= process.env.MINIMUM_STAKE) {
+        let address = delegation.delegationResponses[j].delegation.delegatorAddress
+        let amount = delegation.delegationResponses[j].balance.amount / 1000000
+        count.push(address)
+        if (!delegations.includes(address)) {
+            delegations.push(address)
+        }
+        result[address] = 0.5
+        bonus[address] = 0.5
+    }
+}
+bonus_count = count.length
+console.log(`${validators[18].description.moniker}: ${count.length}`)
+
 console.log(`\n${operatorAddresses.length} validators were queried`)
 console.log(`There are ${delegations.length} delegators meet the criteria (warning: not accounting for same address staking to multiple validators)`)
+console.log(normal_count)
+console.log(bonus_count)
+console.log(`Total AMBER payout = ${normal_count * 0.25 + bonus_count * 0.35}`);
 fs.writeFileSync("snapshot/00-bech32.toml",TOML.stringify(result))
+fs.writeFileSync("snapshot/00-bech32-bonus.toml",TOML.stringify(bonus))
 
-// TODO remove disqualified validators
-// TODO remove duplicate addresses in delegations[] to double check total
-// TODO replace stake amounts with airdrop amounts in the output file
-// TODO distinguish AmberDAO delegators to determine bonus
+// TODO finalize normal & bonus airdrop amounts, and MINIMUM_STAKE

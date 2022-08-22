@@ -23,9 +23,9 @@ typings/
 
 # dotenv environment variables file
 .env
-.env.test
 
 # misc
 snapshot/
 snapshot_secret/
 package-lock.json
+maths.ods

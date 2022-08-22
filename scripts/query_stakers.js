@@ -35,12 +35,12 @@ for (let i = 0; i < validators.length; i++) {
     for (let j = 0; j < delegation.delegationResponses.length; j++) {
         if ((delegation.delegationResponses[j].balance.amount / 1000000) >= process.env.MINIMUM_STAKE) {
             let address = delegation.delegationResponses[j].delegation.delegatorAddress
-            let amount = delegation.delegationResponses[j].balance.amount / 1000000
+            // let amount = delegation.delegationResponses[j].balance.amount / 1000000
             count.push(address)
             if (!delegations.includes(address)) {
                 delegations.push(address)
             }
-            result[address] = 250000    // duplicate addresses are overwritten each loop
+            result[address] = 200000    // duplicate addresses are overwritten each loop
         }
     }
     normal_count = delegations.length
@@ -55,13 +55,13 @@ let count = []
 for (let j = 0; j < delegation.delegationResponses.length; j++) {
     if ((delegation.delegationResponses[j].balance.amount / 1000000) >= process.env.MINIMUM_STAKE) {
         let address = delegation.delegationResponses[j].delegation.delegatorAddress
-        let amount = delegation.delegationResponses[j].balance.amount / 1000000
+        // let amount = delegation.delegationResponses[j].balance.amount / 1000000
         count.push(address)
         if (!delegations.includes(address)) {
             delegations.push(address)
         }
-        result[address] = 350000
-        bonus[address] = 350000
+        result[address] = 250000
+        bonus[address] = 250000
     }
 }
 bonus_count = count.length
@@ -69,9 +69,9 @@ console.log(`${validators[18].description.moniker}: ${count.length}`)
 
 console.log(`\n${operatorAddresses.length} validators were queried`)
 console.log(`There are ${delegations.length} delegators meet the criteria`)
-console.log(`${normal_count} normal stakers`)
+console.log(`${delegations.length - bonus_count} normal stakers`)
 console.log(`${bonus_count} AmberDAO stakers`)
-console.log(`Total uAMBER payout = ${normal_count * 250000 + bonus_count * 350000}`);
+console.log(`Total AMBER payout = ${(normal_count * 200000 + bonus_count * 250000) / 1000000}`);
 fs.writeFileSync("snapshot/00-bech32.toml",TOML.stringify(result))
 fs.writeFileSync("snapshot/00-bech32-bonus.toml",TOML.stringify(bonus))
 

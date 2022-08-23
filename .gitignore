@@ -29,3 +29,4 @@ snapshot/
 snapshot_secret/
 package-lock.json
 maths.ods
+.github/

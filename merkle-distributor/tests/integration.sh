@@ -213,7 +213,7 @@ function test_claim() {
     log_test_header
 
     # Wrong index
-    local send_message='{"claim":{"index":"1","address":"secret1gs8hau7q8xcya2jum7anj9ap47hw96rmhs2smv","amount":"11","proof":["88f359f9f9d190245e8a0d52959a46992170360d4feacd2ff61d6ef44669203f"]}}'
+    local send_message='{"claim":{"index":"1","address":"secret1qsjlkyspurmrhmp0fzchtfguqyvzfdwhn9seu6","amount":"200000","proof":["4c4eb3a5007ff5a079de1559429d99307842990d9cfdb43fdd3f543c130a736c", "6126c047a27a2ae4f5b643cd0574490894bc35a20bbb7955b927937f0817ba07", "5a70f4ca1debd8b60edae74fd750f5347ec84506023f222551f9c926760554e7", "faa89bfd105ce6032ec2a77409198b4e8c4f1e065d268252feb90f90e4e8c92f", "73e6b31ca2135fb958929d16e57a639566b1e7e147ca429cd1f51bc0ebf623b7", "ff0d76e0d6a8206bf6d480a5f65629ba31a5537e049c19952286b24e90cc2d6f", "54cd4462c3bc1098a3b15f46b43e98fd9165a8a6d60d8b944dd9ca15e1a2e0a7", "37eb34a046c5bc952343ec0e5553f16408b1fbf747c5512131fed20bdd3a778f", "3d0e2d622cc20c55879eb5347711f7cf94a0282a7cf02179c6f0ce33aefbbbd9", "231f9e40e15b6d8dc7cbedc44fe87ac5be32348d28d2ceb770f10f7277745b44", "52efbcfdc188262b497edfef7aabd5bc57fc2d0549fe4d4c137b0dee6e43ff5a", "4100a6e1fa2e02163be5c0f4ec219bebcb7b600235b496319f6f1f77001589ab", "2235ce444bf5d62a9b99798b29715944fc44d1f4abbd416ff81846f559e5e388", "173223d03daae51a45b1b2d38d4f45030e882ce1c790c5f679d8d8e483efa675", "be8cf40e134a2bad08cb902bcedda49bc82b707ef57ae7b8bb1a2212c3927d1c"]}}'
     local send_response
     tx_hash="$(compute_execute "$distributor_contract_addr" "$send_message" ${FROM[a]} --gas 500000)"
     if ! claim_tx="$(wait_for_compute_tx "$tx_hash" "waiting for claim to process")">/dev/null; then
@@ -225,7 +225,7 @@ function test_claim() {
     fi
 
     # Wrong amount
-    local send_message='{"claim":{"index":"2","address":"secret1gs8hau7q8xcya2jum7anj9ap47hw96rmhs2smv","amount":"10000","proof":["88f359f9f9d190245e8a0d52959a46992170360d4feacd2ff61d6ef44669203f"]}}'
+    local send_message='{"claim":{"index":"2","address":"secret1qsjlkyspurmrhmp0fzchtfguqyvzfdwhn9seu6","amount":"250000","proof":["4c4eb3a5007ff5a079de1559429d99307842990d9cfdb43fdd3f543c130a736c", "6126c047a27a2ae4f5b643cd0574490894bc35a20bbb7955b927937f0817ba07", "5a70f4ca1debd8b60edae74fd750f5347ec84506023f222551f9c926760554e7", "faa89bfd105ce6032ec2a77409198b4e8c4f1e065d268252feb90f90e4e8c92f", "73e6b31ca2135fb958929d16e57a639566b1e7e147ca429cd1f51bc0ebf623b7", "ff0d76e0d6a8206bf6d480a5f65629ba31a5537e049c19952286b24e90cc2d6f", "54cd4462c3bc1098a3b15f46b43e98fd9165a8a6d60d8b944dd9ca15e1a2e0a7", "37eb34a046c5bc952343ec0e5553f16408b1fbf747c5512131fed20bdd3a778f", "3d0e2d622cc20c55879eb5347711f7cf94a0282a7cf02179c6f0ce33aefbbbd9", "231f9e40e15b6d8dc7cbedc44fe87ac5be32348d28d2ceb770f10f7277745b44", "52efbcfdc188262b497edfef7aabd5bc57fc2d0549fe4d4c137b0dee6e43ff5a", "4100a6e1fa2e02163be5c0f4ec219bebcb7b600235b496319f6f1f77001589ab", "2235ce444bf5d62a9b99798b29715944fc44d1f4abbd416ff81846f559e5e388", "173223d03daae51a45b1b2d38d4f45030e882ce1c790c5f679d8d8e483efa675", "be8cf40e134a2bad08cb902bcedda49bc82b707ef57ae7b8bb1a2212c3927d1c"]}}'
     local send_response
     tx_hash="$(compute_execute "$distributor_contract_addr" "$send_message" ${FROM[a]} --gas 500000)"
     if ! claim_tx="$(wait_for_compute_tx "$tx_hash" "waiting for claim to process")">/dev/null; then
@@ -237,7 +237,7 @@ function test_claim() {
     fi
 
     # Wrong address
-    local send_message='{"claim":{"index":"2","address":"secret1kgjjnrtnfgxhfygnqdfj5h0lk26salnuzyfrya","amount":"11","proof":["88f359f9f9d190245e8a0d52959a46992170360d4feacd2ff61d6ef44669203f"]}}'
+    local send_message='{"claim":{"index":"2","address":"secret1qg6p9uzq4qgepeuwhym4atpk9ccvtscs98rf7f","amount":"200000","proof":["4c4eb3a5007ff5a079de1559429d99307842990d9cfdb43fdd3f543c130a736c", "6126c047a27a2ae4f5b643cd0574490894bc35a20bbb7955b927937f0817ba07", "5a70f4ca1debd8b60edae74fd750f5347ec84506023f222551f9c926760554e7", "faa89bfd105ce6032ec2a77409198b4e8c4f1e065d268252feb90f90e4e8c92f", "73e6b31ca2135fb958929d16e57a639566b1e7e147ca429cd1f51bc0ebf623b7", "ff0d76e0d6a8206bf6d480a5f65629ba31a5537e049c19952286b24e90cc2d6f", "54cd4462c3bc1098a3b15f46b43e98fd9165a8a6d60d8b944dd9ca15e1a2e0a7", "37eb34a046c5bc952343ec0e5553f16408b1fbf747c5512131fed20bdd3a778f", "3d0e2d622cc20c55879eb5347711f7cf94a0282a7cf02179c6f0ce33aefbbbd9", "231f9e40e15b6d8dc7cbedc44fe87ac5be32348d28d2ceb770f10f7277745b44", "52efbcfdc188262b497edfef7aabd5bc57fc2d0549fe4d4c137b0dee6e43ff5a", "4100a6e1fa2e02163be5c0f4ec219bebcb7b600235b496319f6f1f77001589ab", "2235ce444bf5d62a9b99798b29715944fc44d1f4abbd416ff81846f559e5e388", "173223d03daae51a45b1b2d38d4f45030e882ce1c790c5f679d8d8e483efa675", "be8cf40e134a2bad08cb902bcedda49bc82b707ef57ae7b8bb1a2212c3927d1c"]}}'
     local send_response
     tx_hash="$(compute_execute "$distributor_contract_addr" "$send_message" ${FROM[a]} --gas 500000)"
     if ! claim_tx="$(wait_for_compute_tx "$tx_hash" "waiting for claim to process")">/dev/null; then
@@ -251,17 +251,18 @@ function test_claim() {
     is_claimed_response=$(is_claimed "$contract_addr" "2")
     assert_eq "$is_claimed_response" "false"
 
-    local send_message='{"claim":{"index":"2","address":"secret1gs8hau7q8xcya2jum7anj9ap47hw96rmhs2smv","amount":"11","proof":["88f359f9f9d190245e8a0d52959a46992170360d4feacd2ff61d6ef44669203f"]}}'
+    local send_message='{"claim":{"index":"2","address":"secret1qsjlkyspurmrhmp0fzchtfguqyvzfdwhn9seu6","amount":"200000","proof":["4c4eb3a5007ff5a079de1559429d99307842990d9cfdb43fdd3f543c130a736c", "6126c047a27a2ae4f5b643cd0574490894bc35a20bbb7955b927937f0817ba07", "5a70f4ca1debd8b60edae74fd750f5347ec84506023f222551f9c926760554e7", "faa89bfd105ce6032ec2a77409198b4e8c4f1e065d268252feb90f90e4e8c92f", "73e6b31ca2135fb958929d16e57a639566b1e7e147ca429cd1f51bc0ebf623b7", "ff0d76e0d6a8206bf6d480a5f65629ba31a5537e049c19952286b24e90cc2d6f", "54cd4462c3bc1098a3b15f46b43e98fd9165a8a6d60d8b944dd9ca15e1a2e0a7", "37eb34a046c5bc952343ec0e5553f16408b1fbf747c5512131fed20bdd3a778f", "3d0e2d622cc20c55879eb5347711f7cf94a0282a7cf02179c6f0ce33aefbbbd9", "231f9e40e15b6d8dc7cbedc44fe87ac5be32348d28d2ceb770f10f7277745b44", "52efbcfdc188262b497edfef7aabd5bc57fc2d0549fe4d4c137b0dee6e43ff5a", "4100a6e1fa2e02163be5c0f4ec219bebcb7b600235b496319f6f1f77001589ab", "2235ce444bf5d62a9b99798b29715944fc44d1f4abbd416ff81846f559e5e388", "173223d03daae51a45b1b2d38d4f45030e882ce1c790c5f679d8d8e483efa675", "be8cf40e134a2bad08cb902bcedda49bc82b707ef57ae7b8bb1a2212c3927d1c"]}}'
     local send_response
     tx_hash="$(compute_execute "$contract_addr" "$send_message" ${FROM[a]} --gas 500000)"
     send_response="$(wait_for_compute_tx "$tx_hash" 'waiting for claim to complete')"
     log "$send_response"
 
+    # Should be successful
     is_claimed_response=$(is_claimed "$contract_addr" "2")
     assert_eq "$is_claimed_response" "true"
 
     # Should error "already claimed"
-    local send_message='{"claim":{"index":"2","address":"secret1gs8hau7q8xcya2jum7anj9ap47hw96rmhs2smv","amount":"11","proof":["88f359f9f9d190245e8a0d52959a46992170360d4feacd2ff61d6ef44669203f"]}}'
+    local send_message='{"claim":{"index":"2","address":"secret1qsjlkyspurmrhmp0fzchtfguqyvzfdwhn9seu6","amount":"200000","proof":["4c4eb3a5007ff5a079de1559429d99307842990d9cfdb43fdd3f543c130a736c", "6126c047a27a2ae4f5b643cd0574490894bc35a20bbb7955b927937f0817ba07", "5a70f4ca1debd8b60edae74fd750f5347ec84506023f222551f9c926760554e7", "faa89bfd105ce6032ec2a77409198b4e8c4f1e065d268252feb90f90e4e8c92f", "73e6b31ca2135fb958929d16e57a639566b1e7e147ca429cd1f51bc0ebf623b7", "ff0d76e0d6a8206bf6d480a5f65629ba31a5537e049c19952286b24e90cc2d6f", "54cd4462c3bc1098a3b15f46b43e98fd9165a8a6d60d8b944dd9ca15e1a2e0a7", "37eb34a046c5bc952343ec0e5553f16408b1fbf747c5512131fed20bdd3a778f", "3d0e2d622cc20c55879eb5347711f7cf94a0282a7cf02179c6f0ce33aefbbbd9", "231f9e40e15b6d8dc7cbedc44fe87ac5be32348d28d2ceb770f10f7277745b44", "52efbcfdc188262b497edfef7aabd5bc57fc2d0549fe4d4c137b0dee6e43ff5a", "4100a6e1fa2e02163be5c0f4ec219bebcb7b600235b496319f6f1f77001589ab", "2235ce444bf5d62a9b99798b29715944fc44d1f4abbd416ff81846f559e5e388", "173223d03daae51a45b1b2d38d4f45030e882ce1c790c5f679d8d8e483efa675", "be8cf40e134a2bad08cb902bcedda49bc82b707ef57ae7b8bb1a2212c3927d1c"]}}'
     local send_response
     tx_hash="$(compute_execute "$distributor_contract_addr" "$send_message" ${FROM[a]} --gas 500000)"
     if ! claim_tx="$(wait_for_compute_tx "$tx_hash" "waiting for claim to process")">/dev/null; then
@@ -275,27 +276,27 @@ function test_claim() {
     is_claimed_response=$(is_claimed "$contract_addr" "0")
     assert_eq "$is_claimed_response" "false"
 
-    # Multi level proof
-    local send_message='{"claim":{"index":"0","address":"secret1kgjjnrtnfgxhfygnqdfj5h0lk26salnuzyfrya","amount":"100","proof":["6fed0bf91be8e5a13a0518b123f94e686519d6bb01877661eee78f6167407342", "de87d1f2840d1913658a30dd1e0bd1a3cf57e4542bd6f95d2eabddc53d0c6905"]}}'
-    local send_response
-    tx_hash="$(compute_execute "$contract_addr" "$send_message" ${FROM[a]} --gas 500000)"
-    send_response="$(wait_for_compute_tx "$tx_hash" 'waiting for claim to complete')"
-    log "$send_response"
+    # # Multi level proof
+    # local send_message='{"claim":{"index":"0","address":"secret1kgjjnrtnfgxhfygnqdfj5h0lk26salnuzyfrya","amount":"100","proof":["6fed0bf91be8e5a13a0518b123f94e686519d6bb01877661eee78f6167407342", "de87d1f2840d1913658a30dd1e0bd1a3cf57e4542bd6f95d2eabddc53d0c6905"]}}'
+    # local send_response
+    # tx_hash="$(compute_execute "$contract_addr" "$send_message" ${FROM[a]} --gas 500000)"
+    # send_response="$(wait_for_compute_tx "$tx_hash" 'waiting for claim to complete')"
+    # log "$send_response"
 
-    # Should error "already claimed"
-    local send_message='{"claim":{"index":"0","address":"secret1kgjjnrtnfgxhfygnqdfj5h0lk26salnuzyfrya","amount":"100","proof":["6fed0bf91be8e5a13a0518b123f94e686519d6bb01877661eee78f6167407342", "de87d1f2840d1913658a30dd1e0bd1a3cf57e4542bd6f95d2eabddc53d0c6905"]}}'
-    local send_response
-    tx_hash="$(compute_execute "$distributor_contract_addr" "$send_message" ${FROM[a]} --gas 500000)"
-    if ! claim_tx="$(wait_for_compute_tx "$tx_hash" "waiting for claim to process")">/dev/null; then
-        claim_error="$(get_generic_err "$claim_tx")"
-        if ! jq -Re 'startswith("drop already claimed")' <<< "$claim_error">/dev/null; then
-            log "$claim_error"
-            return 1
-        fi
-    fi
+    # # Should error "already claimed"
+    # local send_message='{"claim":{"index":"0","address":"secret1kgjjnrtnfgxhfygnqdfj5h0lk26salnuzyfrya","amount":"100","proof":["6fed0bf91be8e5a13a0518b123f94e686519d6bb01877661eee78f6167407342", "de87d1f2840d1913658a30dd1e0bd1a3cf57e4542bd6f95d2eabddc53d0c6905"]}}'
+    # local send_response
+    # tx_hash="$(compute_execute "$distributor_contract_addr" "$send_message" ${FROM[a]} --gas 500000)"
+    # if ! claim_tx="$(wait_for_compute_tx "$tx_hash" "waiting for claim to process")">/dev/null; then
+    #     claim_error="$(get_generic_err "$claim_tx")"
+    #     if ! jq -Re 'startswith("drop already claimed")' <<< "$claim_error">/dev/null; then
+    #         log "$claim_error"
+    #         return 1
+    #     fi
+    # fi
 
-    is_claimed_response=$(is_claimed "$contract_addr" "0")
-    assert_eq "$is_claimed_response" "true"
+    # is_claimed_response=$(is_claimed "$contract_addr" "0")
+    # assert_eq "$is_claimed_response" "true"
 }
 
 function main() {
@@ -318,10 +319,11 @@ function main() {
     scrt_contract_hash="$(secretcli q compute contract-hash "$scrt_contract_addr")"
     scrt_contract_hash="${scrt_contract_hash:2}"
 
-    init_msg='{"token_addr":"'"$scrt_contract_addr"'", "token_hash":"'"$scrt_contract_hash"'", "merkle_root":"44cdb551dd2a331bed89246a24f515d12316740f8b53df8df2d91e96899e3bf7"}'
+    # distributor init
+    init_msg='{"token_addr":"'"$scrt_contract_addr"'", "token_hash":"'"$scrt_contract_hash"'", "merkle_root":"08a73156193962c44c237448cca7d1d7edb65fea3e8fde85dca5b4cbbac967c5"}'
     distributor_contract_addr="$(create_contract '.' "$init_msg")"
 
-    local send_message='{"send":{"recipient":"'"$distributor_contract_addr"'","amount":"999999999999999999999999999999"}}'
+    local send_message='{"send":{"recipient":"'"$distributor_contract_addr"'","amount":"5110600000"}}'
     local send_response
     tx_hash="$(compute_execute "$scrt_contract_addr" "$send_message" ${FROM[a]} --gas 500000)"
     send_response="$(wait_for_compute_tx "$tx_hash" 'waiting for send to distributor contract to complete')"

@@ -4,7 +4,7 @@ all:
 	RUSTFLAGS='-C link-arg=-s' cargo build --release --target wasm32-unknown-unknown
 	cp ./target/wasm32-unknown-unknown/release/*.wasm ./contract.wasm
 	## The following line is not necessary, may work only on linux (extra size optimization)
-	# wasm-opt -Os ./contract.wasm -o ./contract.wasm
+	wasm-opt -Os ./contract.wasm -o ./contract.wasm
 	cat ./contract.wasm | gzip -9 > ./contract.wasm.gz
 
 clean:
@@ -16,8 +16,8 @@ start-server: # CTRL+C to stop
 	docker run -it --rm \
 		-p 26657:26657 -p 26656:26656 -p 1317:1317 \
 		-v $$(pwd):/root/code \
-		-v $$(pwd)/tests/secret-secret:/root/secret-secret \
-		--name localsecret ghcr.io/scrtlabs/localsecret
+		-v $$(pwd)/../secret-secret:/root/secret-secret \
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.3.1
 
 .PHONY: start-server-detached
 start-server-detached:
@@ -25,7 +25,7 @@ start-server-detached:
 		-p 26657:26657 -p 26656:26656 -p 1317:1317 \
 		-v $$(pwd):/root/code \
 		-v $$(pwd)/../secret-secret:/root/secret-secret \
-		--name secretdev enigmampc/secret-network-sw-dev:v1.0.4
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.3.1
 
 .PHONY: list-code
 list-code:

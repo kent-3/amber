@@ -3,14 +3,15 @@ use cosmwasm_std::{
     StdError, StdResult, Storage, Uint128,
 };
 use secret_toolkit::snip20;
-use web3::signing::keccak256;
+use secret_toolkit::storage::{TypedStore, TypedStoreMut};
 
 use crate::merkle_proof::{encode_as_merkle_leaf, verify_proof};
 use crate::msg::{HandleMsg, InitMsg, QueryMsg};
 use crate::state::{config, config_read, State};
+
 use byteorder::{BigEndian, ByteOrder};
 use hex::FromHex;
-use secret_toolkit::storage::{TypedStore, TypedStoreMut};
+use web3::signing::keccak256;
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
@@ -66,7 +67,7 @@ pub fn claim<S: Storage, A: Api, Q: Querier>(
         return Err(StdError::generic_err("drop already claimed"));
     }
 
-    let state = config_read(&mut deps.storage).load()?;
+    let state = config_read(&deps.storage).load()?;
 
     let hex_address = deps.api.canonical_address(&address)?;
     let proof_bytes = proof
@@ -108,7 +109,7 @@ fn set_claimed<S: Storage, A: Api, Q: Querier>(deps: &mut Extern<S, A, Q>, index
 
     let mut claimed_word: u128 = claimed_bitmap.load(&claimed_word_index).unwrap_or(0);
     let claimed_bit_index = index % 128;
-    claimed_word = claimed_word | (1 << claimed_bit_index);
+    claimed_word |= 1 << claimed_bit_index;
 
     claimed_bitmap
         .store(&claimed_word_index, &claimed_word)
@@ -123,7 +124,7 @@ pub fn is_claimed<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>, index:
 
     let claimed_word: u128 = claimed_bitmap.load(&claimed_word_index).unwrap_or(0);
     let claimed_bit_index = index % 128;
-    let mask = (1 << claimed_bit_index);
+    let mask = 1 << claimed_bit_index;
 
     claimed_word & mask == mask
 }
@@ -132,8 +133,8 @@ pub fn is_claimed<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>, index:
 mod tests {
     use super::*;
     use crate::msg::HandleMsg::Claim;
+    use cosmwasm_std::from_binary;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, MockApi, MockQuerier, MockStorage};
-    use cosmwasm_std::{coins, from_binary, StdError};
 
     fn init_helper() -> (
         StdResult<InitResponse>,
@@ -155,14 +156,14 @@ mod tests {
     #[test]
     #[ignore] // Apparently the `canonicalize_address` function doesn't work for real addresses in `MockApi`
     fn test_claim() {
-        let (init_result, mut deps) = init_helper();
+        let (_init_result, mut deps) = init_helper();
 
         // Externally built MerkleTree
         let address = HumanAddr("secret1gs8hau7q8xcya2jum7anj9ap47hw96rmhs2smv".to_string());
         let claim_msg = Claim {
-            index: 2,
+            index: Uint128(2),
             address,
-            amount: 11,
+            amount: Uint128(11),
             proof: vec![
                 "88f359f9f9d190245e8a0d52959a46992170360d4feacd2ff61d6ef44669203f".to_string(),
             ],
@@ -174,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_set_claimed() {
-        let (init_result, mut deps) = init_helper();
+        let (_init_result, mut deps) = init_helper();
 
         let index: u128 = 1;
         let is_claimed_query = QueryMsg::IsClaimed {

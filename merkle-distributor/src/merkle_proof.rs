@@ -17,7 +17,7 @@ fn is_correct_order(f: [u8; 32], s: [u8; 32]) -> bool {
 }
 
 pub fn verify_proof(proof: Vec<[u8; 32]>, root: [u8; 32], leaf: [u8; 32]) -> bool {
-    let mut computed_hash = leaf.clone();
+    let mut computed_hash = leaf;
 
     for proof_el in proof {
         let mut encoded = vec![];

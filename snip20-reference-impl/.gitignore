@@ -19,3 +19,5 @@ contract.wasm.gz
 # IDEs
 *.iml
 .idea
+
+.vscode

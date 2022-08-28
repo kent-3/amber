@@ -1,4 +1,4 @@
-SECRETCLI = docker exec -it secretdev /usr/bin/secretcli
+SECRETCLI = docker exec -it localsecret /usr/bin/secretcli
 
 all:
 	RUSTFLAGS='-C link-arg=-s' cargo build --release --target wasm32-unknown-unknown
@@ -60,4 +60,4 @@ compile-optimized-reproducible:
 	docker run --rm -v "$$(pwd)":/contract \
 		--mount type=volume,source="$$(basename "$$(pwd)")_cache",target=/code/target \
 		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-		enigmampc/secret-contract-optimizer:1.0.4
+		enigmampc/secret-contract-optimizer:1.0.9

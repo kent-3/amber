@@ -314,7 +314,7 @@ function main() {
     log "a address: ${ADDRESS[a]}"
 
     # secretSCRT init
-    init_msg='{"name":"secret-secret","admin":"'"${ADDRESS[a]}"'","symbol":"SSCRT","decimals":6,"initial_balances":[{"address":"'"${ADDRESS[a]}"'", "amount":"999999999999999999999999999999"}],"prng_seed":"'"$prng_seed"'","config":{"public_total_supply":true}}'
+    init_msg='{"name":"secret-secret","admin":"'"${ADDRESS[a]}"'","symbol":"SSCRT","decimals":6,"initial_balances":[{"address":"'"${ADDRESS[a]}"'", "amount":"9999999999999999999999999999"}],"prng_seed":"'"$prng_seed"'","config":{"public_total_supply":true}}'
     scrt_contract_addr="$(init_contract "$code_id" "$init_msg")"
     scrt_contract_hash="$(secretcli q compute contract-hash "$scrt_contract_addr")"
     scrt_contract_hash="${scrt_contract_hash:2}"

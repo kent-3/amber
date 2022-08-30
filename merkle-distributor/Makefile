@@ -32,11 +32,11 @@ list-code:
 	$(SECRETCLI) query compute list-code
 
 .PHONY: run-tests
-run-tests: compile-optimized
+run-tests:
 	tests/integration.sh
 
 .PHONY: integration-test
-integration-test: compile-optimized
+integration-test:
 	tests/setup.sh
 
 .PHONY: compile _compile

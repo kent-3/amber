@@ -24,7 +24,6 @@ jobs:
       - name: Run unit tests
         uses: actions-rs/cargo@v1
         with:
-          path: /merkle-distributor/
           command: unit-test
           args: --locked
         env:
@@ -33,7 +32,6 @@ jobs:
       - name: Compile WASM contract
         uses: actions-rs/cargo@v1
         with:
-          path: /merkle-distributor/
           command: build
           args: --release --target wasm32-unknown-unknown --locked
         env:
@@ -61,14 +59,12 @@ jobs:
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
         with:
-          path: /merkle-distributor/
           command: fmt
           args: --all -- --check
 
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
         with:
-          path: /merkle-distributor/
           command: clippy
           args: -- -D warnings
 
@@ -78,6 +74,5 @@ jobs:
       - name: Generate Schema
         uses: actions-rs/cargo@v1
         with:
-          path: /merkle-distributor/
           command: schema
           args: --locked

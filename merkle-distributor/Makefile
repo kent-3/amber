@@ -43,7 +43,7 @@ integration-test:
 compile: _compile contract.wasm.gz
 _compile:
 	cargo build --target wasm32-unknown-unknown --locked
-	cp ./target/wasm32-unknown-unknown/debug/*.wasm ./contract.wasm
+	cp ../target/wasm32-unknown-unknown/debug/*.wasm ./contract.wasm
 
 contract.wasm.gz: contract.wasm
 	cat ./contract.wasm | gzip -9 > ./contract.wasm.gz

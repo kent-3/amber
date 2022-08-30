@@ -23,8 +23,8 @@ start-server: # CTRL+C to stop
 start-server-detached:
 	docker run -d --rm \
 		-p 26657:26657 -p 26656:26656 -p 1317:1317 \
-		-v $$(pwd):/root/code \
-		-v $$(pwd)/../secret-secret:/root/secret-secret \
+		-v $$(pwd)/merkle-distributor:/root/code \
+		-v $$(pwd)/secret-secret:/root/secret-secret \
 		--name localsecret ghcr.io/scrtlabs/localsecret:v1.3.1
 
 .PHONY: list-code
@@ -33,17 +33,17 @@ list-code:
 
 .PHONY: run-tests
 run-tests:
-	tests/integration.sh
+	merkle-distributor/tests/integration.sh
 
 .PHONY: integration-test
 integration-test:
-	tests/setup.sh
+	merkle-distributor/tests/setup.sh
 
 .PHONY: compile _compile
 compile: _compile contract.wasm.gz
 _compile:
 	cargo build --target wasm32-unknown-unknown --locked
-	cp ../target/wasm32-unknown-unknown/debug/*.wasm ./contract.wasm
+	cp ./target/wasm32-unknown-unknown/debug/*.wasm ./contract.wasm
 
 contract.wasm.gz: contract.wasm
 	cat ./contract.wasm | gzip -9 > ./contract.wasm.gz

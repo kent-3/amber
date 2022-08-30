@@ -37,8 +37,8 @@ jobs:
         env:
           RUSTFLAGS: "-C link-arg=-s"
 
-      - name: Run integration tests
-        run: cd merkle-distributor/ && make integration-test
+      - name: Run integration test
+        run: make integration-test
 
 
   lints:

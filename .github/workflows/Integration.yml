@@ -69,8 +69,8 @@ jobs:
             ubuntu-latest-sccache-
       - name: Start sccache server
         run: sccache --start-server
-      - name: Compile code
-        run: cd merkle-distributor/ && make compile
+      # - name: Compile code
+      #   run: make compile
       - name: Run integration tests
         run: npx ts-node deploy/integration.ts
       - name: Print sccache stats

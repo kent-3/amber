@@ -5,10 +5,10 @@ make start-server-detached
 
 # Transfer secret-secret inside
 # docker exec -it localsecret mkdir code
-docker exec -it localsecret mkdir secret-secret
+# docker exec -it localsecret mkdir secret-secret
 # docker cp $(pwd) localsecret:/root/
 # docker exec -it localsecret mv merkle-distributor/ code/
-docker cp ../secret-secret/contract.wasm.gz localsecret:/root/secret-secret/
+# docker cp ../secret-secret/contract.wasm.gz localsecret:/root/secret-secret/
 
 sleep 20
 

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="stylesheet" href="./src/style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite App</title>
+  </head>
+  <body>
+    <div>
+      <canvas class="confetti" id="canvas"></canvas>
+    </div>
+    <div id="app">
+      <form name="loginForm">
+        <label for="nfts">Choose an NFT:</label>
+
+        <select name="nfts" id="nfts" disabled="true">
+          <option value="loading">Loading Keplr</option>
+        </select>
+
+        <button type="submit" disabled="true" id="submit">Submit</button>
+      </form>
+      <div>
+        <h2 id="success"></h2>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+    <script src="/src/confetti.js"></script>
+  </body>
+</html>

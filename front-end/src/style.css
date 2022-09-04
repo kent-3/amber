@@ -19,10 +19,3 @@ body {
 form {
   padding-top: 2rem;
 }
-
-.confetti{
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  display: none;
-}

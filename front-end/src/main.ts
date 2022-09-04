@@ -27,29 +27,16 @@ while (
 
 let myAddress: string;
 let secretjs: SecretNetworkClient;
-let signature;
 
-const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+const distributorContractAddress = import.meta.env.VITE_CONTRACT_ADDRESS;
+const amberContractAddress: string = import.meta.env.VITE_SNIP20_ADDRESS;
 const CHAIN_ID = import.meta.env.VITE_CHAIN_ID;
 
-const permitName = "nft-authorization";
-const allowedTokens = [contractAddress];
-const permissions = ["owner"];
-
-function createOption(value) {
-  let el = document.createElement('option');
-  el.value = value;
-  el.innerHTML = value;
-  el.id = value;
-
-  document.getElementById('nfts').appendChild(el);
-}
- 
 window.onload = async () => {
   if (!window.getOfflineSigner || !window.keplr) {
     alert("Please install Keplr extension");
   } else {
-    if (CHAIN_ID?.includes("pulsar") && keplr.experimentalSuggestChain) {
+    if (CHAIN_ID?.includes("secretdev") && keplr.experimentalSuggestChain) {
       try {
         // Keplr v0.6.4 introduces an experimental feature that supports the feature to suggests the chain from a webpage.
         // The code below is not needed for secret-4 or other integrated chains, but may be helpful if you’re adding a custom chain.
@@ -59,11 +46,11 @@ window.onload = async () => {
         // @ts-expect-error
         await window.keplr.experimentalSuggestChain({
           // Chain-id of the testnet chain.
-          chainId: "pulsar-2",
+          chainId: "secretdev-1",
           // The name of the chain to be displayed to the user.
-          chainName: "Pulsar-2 Testnet",
-          rpc: "https://pulsar-2.api.trivium.network:26657",
-          rest: "https://pulsar-2.api.trivium.network:1317",
+          chainName: "Localsecret Testnet",
+          rpc: "http://localhost:26657",
+          rest: "http://localhost:1317",
           stakeCurrency: {
             coinDenom: "SCRT",
             coinMinimalDenom: "uscrt",
@@ -85,7 +72,7 @@ window.onload = async () => {
             coinDenom: "SCRT",
             coinMinimalDenom: "uscrt",
             coinDecimals: 6,
-            coinGeckoId: "secret"
+            // coinGeckoId: "secret"
           }],
           feeCurrencies: [{
             coinDenom: "SCRT",
@@ -128,128 +115,59 @@ window.onload = async () => {
     encryptionUtils: window.getEnigmaUtils(CHAIN_ID),
   });
 
-  //get query permit
-  const signed = await window.keplr.signAmino(
-    CHAIN_ID,
-    myAddress,
-    {
-      chain_id: CHAIN_ID,
-      account_number: "0", // Must be 0
-      sequence: "0", // Must be 0
-      fee: {
-        amount: [{ denom: "uscrt", amount: "0" }], // Must be 0 uscrt
-        gas: "1", // Must be 1
-      },
-      msgs: [
-        {
-          type: "query_permit", // Must be "query_permit"
-          value: {
-            permit_name: permitName,
-            allowed_tokens: allowedTokens,
-            permissions: permissions,
-          },
-        },
-      ],
-      memo: "", // Must be empty
-    },
-    {
-      preferNoSetFee: true, // Fee must be 0, so hide it from the user
-      preferNoSetMemo: true, // Memo must be empty, so hide it from the user
-    }
-  );
-  signature = signed.signature;
-
-  //query
-  const tokensQuery = {
-    tokens: {
-      owner: myAddress,
-    }
-  }
   
-  const permitQuery = {
-    with_permit: {
-      query: tokensQuery,
-      permit: {
-        params: {
-          permit_name: permitName,
-          allowed_tokens: allowedTokens,
-          chain_id: CHAIN_ID,
-          permissions: permissions,
-        },
-        signature: signature,
-      },
-    },
-  }
-  const { token_list: { tokens: response }} = await secretjs.query.compute.queryContract({
-    contractAddress: contractAddress,
-    codeHash: import.meta.env.VITE_CONTRACT_CODE_HASH,
-    query: permitQuery
-  });
-
-  document.getElementById('nfts').disabled = false;
-  document.getElementById('submit').disabled = false;
-  document.getElementById('nfts').innerHTML = '';
+  document.getElementById('claim').disabled = false;
+  // document.getElementById('submit').disabled = false;
+  // document.getElementById('claim').innerHTML = '';
   
-  for (let i = 0; i < response.length; i++){
-    createOption(response[i])
-  }
 }
+const button = document.getElementById('claim');
 
-document.loginForm.onsubmit = async(e) => {
+button!.onclick = async(e) => {
   e.preventDefault();
-  document.getElementById('submit').disabled = true;
-  const selected = document.getElementById('nfts').value;
+  document.getElementById('claim').disabled = true;
 
-  //query
-  const privateMetadataQuery = {
-    private_metadata: {
-      token_id: selected,
-      viewer: {
-        address: myAddress,
-      },
-    }
-  }
-  
-  const permitQuery = {
-    with_permit: {
-      query: privateMetadataQuery,
-      permit: {
-        params: {
-          permit_name: permitName,
-          allowed_tokens: allowedTokens,
-          chain_id: CHAIN_ID,
-          permissions: permissions,
-        },
-        signature: signature,
-      },
+  await window.keplr.suggestToken(CHAIN_ID, amberContractAddress);
+
+  const myIndex = "0";
+  const myAddress = secretjs.address;
+  const myAmount = "200000";
+  const myProof = ["array", "of", "strings"];
+
+  const claimMsg = {
+    claim: {
+      // these are not my values, just test values from the actual merkle tree
+      index:"2",
+      address:"secret1qsjlkyspurmrhmp0fzchtfguqyvzfdwhn9seu6",
+      amount:"200000",
+      proof:["4c4eb3a5007ff5a079de1559429d99307842990d9cfdb43fdd3f543c130a736c", "6126c047a27a2ae4f5b643cd0574490894bc35a20bbb7955b927937f0817ba07", "5a70f4ca1debd8b60edae74fd750f5347ec84506023f222551f9c926760554e7", "faa89bfd105ce6032ec2a77409198b4e8c4f1e065d268252feb90f90e4e8c92f", "73e6b31ca2135fb958929d16e57a639566b1e7e147ca429cd1f51bc0ebf623b7", "ff0d76e0d6a8206bf6d480a5f65629ba31a5537e049c19952286b24e90cc2d6f", "54cd4462c3bc1098a3b15f46b43e98fd9165a8a6d60d8b944dd9ca15e1a2e0a7", "37eb34a046c5bc952343ec0e5553f16408b1fbf747c5512131fed20bdd3a778f", "3d0e2d622cc20c55879eb5347711f7cf94a0282a7cf02179c6f0ce33aefbbbd9", "231f9e40e15b6d8dc7cbedc44fe87ac5be32348d28d2ceb770f10f7277745b44", "52efbcfdc188262b497edfef7aabd5bc57fc2d0549fe4d4c137b0dee6e43ff5a", "4100a6e1fa2e02163be5c0f4ec219bebcb7b600235b496319f6f1f77001589ab", "2235ce444bf5d62a9b99798b29715944fc44d1f4abbd416ff81846f559e5e388", "173223d03daae51a45b1b2d38d4f45030e882ce1c790c5f679d8d8e483efa675", "be8cf40e134a2bad08cb902bcedda49bc82b707ef57ae7b8bb1a2212c3927d1c"]
     },
-  }
-
-  const { private_metadata: { extension: { auth_key: private_key } } } = await secretjs.query.compute.queryContract({
-    contractAddress: contractAddress,
-    codeHash: import.meta.env.VITE_CONTRACT_CODE_HASH,
-    query: permitQuery,
-  });
-  document.getElementById('submit').disabled = false;
-
-  const uint8key = Uint8Array.from(private_key);
-  const message = new Uint8Array([23,65,12,87]);
-
-  const signed = sign(uint8key, message, /*secureRandom(8, { type: "Uint8Array" })*/);
-
-  var params = new URLSearchParams();
-    params.append('signature', signed.toString());
-    params.append('nft_id', selected);
-
-  const response = await axios.post(
-      `http://localhost:${import.meta.env.VITE_PORT}/login`,
-      params
-  );
-  if (response.data.login === true) {
-    document.getElementById('success').innerHTML = 'LOGIN SUCCESS';
-    document.getElementById('canvas').style = 'display: flex;';
-  }
-  else document.getElementById('success').innerHTML = 'LOGIN FAILED'
+  };
   
+  const tx = await secretjs.tx.compute.executeContract(
+    {
+      sender: secretjs.address,
+      contractAddress: distributorContractAddress,
+      codeHash: import.meta.env.VITE_CONTRACT_CODE_HASH,
+      msg: claimMsg,
+      sentFunds: [],
+    },
+    {
+      gasLimit: 200000,
+    }
+  );
+
+  if (tx.code !== 0) {
+    alert(
+      `Failed with the following error:\n ${tx.rawLog}`
+    );
+  } else {
+    const response = tx.arrayLog?.find(
+      (log) => log.type === "wasm" && log.key === "status"
+    )!.value;
+    alert(response);
+  }
+
+  document.getElementById('claim').disabled = false;
 }
 

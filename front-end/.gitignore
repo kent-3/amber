@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 src/deployment
 .env
+src/07-merkle-distribution.json

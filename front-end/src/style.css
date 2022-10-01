@@ -83,6 +83,21 @@
   flex-wrap: wrap;
 }
 
+#eligibility-section {
+  display: flex;
+  align-items: top;
+  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.section {
+  display: block;
+  padding: 1rem 3rem;
+  width: 340px;
+  flex-basis: 30%;
+}
+
 #about {
   display: block;
   padding: 3rem;

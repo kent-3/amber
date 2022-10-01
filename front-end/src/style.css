@@ -23,22 +23,32 @@
 }
 
 #top-bg {
-  margin-top: -2rem;
-  width: 100%;
+  position: static;
+  margin: -2rem -2rem;
+  width: auto;
   height: 800px;
   background-color: #262626;
 }
 
-.logo {
-  position: absolute;
-  top: 69px;
-  left: 70px;
-  padding-bottom: 1rem;
+#header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 6rem;
+  padding-right: 6rem;
+  background-color: #262626;
+  margin: -2rem -2rem;
+
 }
-.logo img {
-  margin-bottom: -4em;
+
+#logo {
+  padding: 3rem;
+  margin-top: -10rem;
 }
-.logo h1 {
+#logo img {
+  margin-bottom: -4rem;
+}
+#logo h1 {
   margin-top: 0;
   margin-bottom: 0;
   font-family: Outfit, Montserrat, Helvetica, Arial, sans-serif;
@@ -55,17 +65,50 @@
 }
 
 #illustration {
-  position: absolute;
+  /* position: absolute;
   top: 69px;
-  right: 70px;
+  right: 70px; */
+  padding: 3rem;
 }
 #illustration img {
   width: 480px;
   height: 699px;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
+#mid-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+#about {
+  display: block;
+  padding: 3rem;
+  width: 500px;
+}
+
+#claim-container {
+  padding: 3rem;
+  width: 500px;
+  text-align: center;
+}
+#claim-container img {
+  width: auto;
+  margin-top: -4rem;
+  margin-bottom: -4rem;
+}
+#claim-button {
+  font-weight: 800;
+  font-size: 1.4rem;
+  line-height: 1.5rem;
+  margin-bottom: 2rem;
+
+  width: 265px;
+  height: 44px;
+  color: black;
+  background: #FFBF00;
+  box-shadow: -4px -4px 4px rgba(58, 68, 93, 0.5), 4px 4px 4px #060C18;
+  border-radius: 8px; 
 }

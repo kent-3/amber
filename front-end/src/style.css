@@ -1,21 +1,71 @@
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+:root {
+  font-family: Montserrat, Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: #121E34;
+  background-color: #D3D3D3;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
+  -webkit-text-size-adjust: 100%;
 }
 
-#success {
-  display: block;
+#app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+#top-bg {
+  margin-top: -2rem;
+  width: 100%;
+  height: 800px;
+  background-color: #262626;
+}
+
+.logo {
+  position: absolute;
+  top: 69px;
+  left: 70px;
+  padding-bottom: 1rem;
+}
+.logo img {
+  margin-bottom: -4em;
+}
+.logo h1 {
+  margin-top: 0;
+  margin-bottom: 0;
+  font-family: Outfit, Montserrat, Helvetica, Arial, sans-serif;
+  font-style: normal;
+  font-weight: 800;
+  font-size: 100px;
+  line-height: 126px;
+
+  color: #FFFFFF;
+  text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.25), 0px 4px 4px rgba(0, 0, 0, 0.25);
+
+  -webkit-text-stroke-width: 1px;
+  -webkit-text-stroke-color: #FFBF00;
+}
+
+#illustration {
+  position: absolute;
+  top: 69px;
+  right: 70px;
+}
+#illustration img {
+  width: 480px;
+  height: 699px;
 }
 
 body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-}
-
-form {
-  padding-top: 2rem;
 }

@@ -19,10 +19,15 @@ pub enum HandleMsg {
         amount: Uint128,
         proof: Vec<String>,
     },
+    Clawback {
+        address: HumanAddr,
+        password: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     IsClaimed { index: Uint128 },
+    IsUnclaimed {},
 }

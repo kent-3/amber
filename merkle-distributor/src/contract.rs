@@ -42,6 +42,7 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             amount,
             proof,
         } => claim(deps, env, index.u128(), address, amount.u128(), proof),
+        HandleMsg::Clawback { address, password } => clawback(deps, env, address, password),
     }
 }
 
@@ -51,6 +52,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<Binary> {
     match msg {
         QueryMsg::IsClaimed { index } => to_binary(&is_claimed(deps, index.u128())),
+        QueryMsg::IsUnclaimed { } => to_binary(&is_unclaimed(deps)),
     }
 }
 
@@ -127,6 +129,25 @@ pub fn is_claimed<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>, index:
     let mask = 1 << claimed_bit_index;
 
     claimed_word & mask == mask
+}
+
+// query the token contract for how many tokens the distributor contract has left
+pub fn is_unclaimed<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> String {
+    let unclaimed: String; 
+
+    todo!()
+}
+
+// send unclaimed tokens to target address
+pub fn retrieve<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    address: HumanAddr,
+    password: String,
+) -> StdResult<HandleResponse> {
+    let unclaimed: String;
+
+    todo!()
 }
 
 #[cfg(test)]

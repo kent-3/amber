@@ -38,7 +38,6 @@
   padding-right: 6rem;
   background-color: #262626;
   margin: -2rem -2rem;
-
 }
 
 #logo {
@@ -75,29 +74,6 @@
   height: 699px;
 }
 
-#mid-section {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: row;
-  flex-wrap: wrap;
-}
-
-#eligibility-section {
-  display: flex;
-  align-items: top;
-  justify-content: center;
-  flex-direction: row;
-  flex-wrap: wrap;
-}
-
-.section {
-  display: block;
-  padding: 1rem 3rem;
-  width: 340px;
-  flex-basis: 30%;
-}
-
 #about {
   display: block;
   padding: 3rem;
@@ -126,4 +102,65 @@
   background: #FFBF00;
   box-shadow: -4px -4px 4px rgba(58, 68, 93, 0.5), 4px 4px 4px #060C18;
   border-radius: 8px; 
+}
+
+#mid-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+#eligibility-section {
+  display: flex;
+  align-items: top;
+  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.section {
+  display: block;
+  padding: 1rem 3rem;
+  width: 340px;
+  flex-basis: 30%;
+}
+.section:last-of-type {
+  display: block;
+  padding: 1rem 3rem;
+  width: 340px;
+  flex-basis: 30%;
+  margin-bottom: 3rem;
+}
+
+#node-digest {
+  display: flex;
+  align-items: top;
+  justify-content: center;
+  flex-direction: column;
+  flex-wrap: wrap;
+  background-color: #262626;
+  margin: -2rem -2rem;
+}
+#node-digest h1 {
+  display: inline-block;
+  margin-top: 6rem;
+  text-align:center;
+  color: #FEFFFF;
+  font-weight: 800;
+  font-size: 2.75rem;
+}
+#node-digest p {
+  display: inline-block;
+  margin: auto;
+  color: #FEFFFF;
+}
+#node-digest img {
+  display: inline-block;
+  padding: 3rem;
+}
+
+footer {
+  background-color: #262626;
 }

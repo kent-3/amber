@@ -12,6 +12,8 @@ pub struct State {
     pub token_hash: String,
     pub merkle_root: String,
     pub claimed_bitmap: Vec<u128>,
+    pub contract_address: HumanAddr,
+    pub viewing_key: String,
 }
 
 pub fn config<S: Storage>(storage: &mut S) -> Singleton<S, State> {

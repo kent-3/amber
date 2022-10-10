@@ -15,7 +15,7 @@ use web3::signing::keccak256;
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
-    _env: Env,
+    env: Env,
     msg: InitMsg,
 ) -> StdResult<InitResponse> {
     let state = State {
@@ -23,11 +23,22 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         token_hash: msg.token_hash,
         merkle_root: msg.merkle_root,
         claimed_bitmap: vec![],
+        contract_address: env.contract.address,
+        viewing_key: "amber_rocks".to_string(),
     };
 
     config(&mut deps.storage).save(&state)?;
 
-    Ok(InitResponse::default())
+    Ok(InitResponse {
+        messages: vec![snip20::set_viewing_key_msg(
+            state.viewing_key,
+            None,
+            256,
+            state.token_hash,
+            state.token_addr,
+        )?],
+        log: vec![],
+    })
 }
 
 pub fn handle<S: Storage, A: Api, Q: Querier>(
@@ -52,7 +63,7 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<Binary> {
     match msg {
         QueryMsg::IsClaimed { index } => to_binary(&is_claimed(deps, index.u128())),
-        QueryMsg::IsUnclaimed { } => to_binary(&is_unclaimed(deps)),
+        QueryMsg::IsUnclaimed {} => to_binary(&is_unclaimed(deps)),
     }
 }
 
@@ -132,10 +143,16 @@ pub fn is_claimed<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>, index:
 }
 
 // query the token contract for how many tokens the distributor contract has left
-pub fn is_unclaimed<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> String {
-    let unclaimed: String; 
+pub fn is_unclaimed<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> StdResult<Uint128> {
+    let state = config_read(&deps.storage).load()?;
 
-    todo!()
+    let response: snip20::BalanceResponse = snip20::QueryMsg::Balance {
+        address: state.contract_address,
+        key: state.viewing_key,
+    }
+    .query(&deps.querier, 256, state.token_hash, state.token_addr)?;
+
+    Ok(response.balance.amount)
 }
 
 // send unclaimed tokens to target address

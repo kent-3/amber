@@ -167,7 +167,12 @@ pub fn retrieve<S: Storage, A: Api, Q: Querier>(
         address: state.contract_address,
         key: state.viewing_key,
     }
-    .query(&deps.querier, 1, state.token_hash.clone(), state.token_addr.clone())?;
+    .query(
+        &deps.querier,
+        1,
+        state.token_hash.clone(),
+        state.token_addr.clone(),
+    )?;
 
     let unclaimed = response.balance.amount;
 

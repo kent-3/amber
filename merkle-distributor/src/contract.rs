@@ -42,7 +42,7 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             amount,
             proof,
         } => claim(deps, env, index.u128(), address, amount.u128(), proof),
-        HandleMsg::Clawback { address, password } => clawback(deps, env, address, password),
+        HandleMsg::Retrieve { address, password } => retrieve(deps, env, address, password),
     }
 }
 

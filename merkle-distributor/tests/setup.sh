@@ -10,7 +10,7 @@ make start-server-detached
 # docker exec -it localsecret mv merkle-distributor/ code/
 # docker cp ../secret-secret/contract.wasm.gz localsecret:/root/secret-secret/
 
-sleep 20
+sleep 30
 
 make run-tests
 if [ $? -eq 0 ]

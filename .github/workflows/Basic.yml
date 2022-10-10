@@ -17,7 +17,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.59.0
+          toolchain: 1.63.0
           target: wasm32-unknown-unknown
           override: true
 
@@ -37,12 +37,8 @@ jobs:
         env:
           RUSTFLAGS: "-C link-arg=-s"
 
-      # I can't get this test to work reliably. 
-      # (Some rpc issue where sometimes the account keys aren't found.)
-      # It works locally but only after restarting everything.
-      # - name: Run integration test
-      #   run: make integration-test
-
+      - name: Run integration test
+        run: make integration-test
 
   lints:
     name: Lints
@@ -55,7 +51,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.59.0
+          toolchain: 1.63.0
           override: true
           components: rustfmt, clippy
 

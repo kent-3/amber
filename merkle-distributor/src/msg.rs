@@ -19,7 +19,7 @@ pub enum HandleMsg {
         amount: Uint128,
         proof: Vec<String>,
     },
-    Clawback {
+    Retrieve {
         address: HumanAddr,
         password: String,
     },

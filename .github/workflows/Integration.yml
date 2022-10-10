@@ -30,6 +30,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+
       - name: Install sccache
         env:
           LINK: https://github.com/mozilla/sccache/releases/download
@@ -41,14 +42,21 @@ jobs:
           mv -f $SCCACHE_FILE/sccache $HOME/.local/bin/sccache
           chmod +x $HOME/.local/bin/sccache
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+
       - name: Install dependencies
         run: npm --prefix deploy/ install
+
       - name: Install Rust  
         run: rustup update stable && rustup default stable
         shell: bash
+
       - name: Add wasm toolchain
         run: |
           rustup target add wasm32-unknown-unknown
+
+      - name: Install wasm-opt
+        run: sudo apt update && sudo apt install -y binaryen clang
+
       - name: Cache cargo registry
         uses: actions/cache@v2
         continue-on-error: false
@@ -59,6 +67,7 @@ jobs:
           key: ubuntu-latest-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ubuntu-latest-cargo-
+
       - name: Save sccache
         uses: actions/cache@v2
         continue-on-error: false
@@ -67,15 +76,21 @@ jobs:
           key: ubuntu-latest-sccache-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ubuntu-latest-sccache-
+
       - name: Start sccache server
         run: sccache --start-server
+
       # - name: Compile code
       #   run: make compile
+
       - name: Run deploy-only test
         run: npx ts-node deploy/token2testnet.ts
+
       - name: Run integration tests
         run: npx ts-node deploy/integration.ts
+
       - name: Print sccache stats
         run: sccache --show-stats
+        
       - name: Stop sccache server
         run: sccache --stop-server || true

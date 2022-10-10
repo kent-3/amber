@@ -17,7 +17,7 @@ start-server: # CTRL+C to stop
 		-p 26657:26657 -p 26656:26656 -p 1317:1317 \
 		-v $$(pwd):/root/code \
 		-v $$(pwd)/../secret-secret:/root/secret-secret \
-		--name localsecret ghcr.io/scrtlabs/localsecret:v1.3.1
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.5.1-beta.4
 
 .PHONY: start-server-detached
 start-server-detached:
@@ -25,7 +25,7 @@ start-server-detached:
 		-p 26657:26657 -p 26656:26656 -p 1317:1317 \
 		-v $$(pwd)/merkle-distributor:/root/code \
 		-v $$(pwd)/secret-secret:/root/secret-secret \
-		--name localsecret ghcr.io/scrtlabs/localsecret:v1.3.1
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.5.1-beta.4
 
 .PHONY: list-code
 list-code:

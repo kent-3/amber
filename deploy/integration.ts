@@ -334,6 +334,47 @@ async function claimTx(
     console.log(`claimTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
   }
   
+  async function retrieveTx(
+    client: SecretNetworkClient,
+    snip20Hash: string,
+    snip20Address: string,
+    distributorHash: string,
+    distributorAddress: string,
+  ) {
+    const handle_msg = {
+      retrieve:{ 
+        address: client.address,
+      }
+    };
+  
+    const tx = await client.tx.compute.executeContract(
+      {
+        sender: client.address,
+        contractAddress: distributorAddress,
+        codeHash: distributorHash,
+        msg: handle_msg,
+        sentFunds: [],
+      },
+      {
+        gasLimit: 500000,
+      }
+    );
+  
+    if (tx.code !== 0) {
+      throw new Error(
+        `Failed with the following error:\n ${tx.rawLog}`
+      );
+    };
+
+    const status = tx.arrayLog!.find(
+        (log) => log.type === "wasm" && log.key === "status"
+      )!.value;
+
+    assert(status, "success");
+  
+    console.log(`retrieveTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
+  }
+
 async function query_claimed(
   client: SecretNetworkClient,
   distributorHash: string,
@@ -380,6 +421,7 @@ async function test_init_tx(
 ) {
   await sendTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
   await claimTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
+  await retrieveTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
   await query_claimed(client, distributorHash, distributorAddress);
   await query_unclaimed(client, distributorHash, distributorAddress);
 }

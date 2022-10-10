@@ -1,19 +1,27 @@
 [pulsar-2]
 
-Uploading SNIP20 contract
+Initialized client with wallet address: secret12kw8ja5rgcxq66x3q48m9ec4n7g8a29xayprgy
+
+Uploading contract
 Upload used 2423685 gas
 
-Contract codeId:  11949
+Contract codeId:  14173
 Contract hash: 9908ee08019a0dbbd73d835df3dbdf72401a4b1397c897c2d9c78ecb071a8106
-Contract address: secret15tasj7lu8gn9ltnsqeys36mw0kag0zs983aj43
+Contract address: secret142fxk8shrxfx8n98868mffauddpk52wspfeats
 
-Init used 39589 gas
+Init used 151608 gas
 
 Uploading distributor contract
-Upload used 1658119 gas
+Upload used 1933997 gas
 
-Contract codeId:  11950
-Contract hash: 662623e29e80ef029362e641849d916c88f10374bbb8b07318b45225ac121b8b
-Contract address: secret1574auhqzehwshcemsz9twh5nlhys3d0424x596
+Contract codeId:  14174
+Contract hash: 031846d328c52db61180e883fa2f92f6d95f7fb6a37aa39b9398e5857a1881e8
+Contract address: secret1n2dmcv3jsyy4upfurw54kpz0xepytxr8d3fyjf
 
-Init used 30395 gas
+Init used 228754 gas
+
+[  TEST  ] test_init_tx
+
+sendTx used 179901 gas
+
+[   OK   ] test_init_tx

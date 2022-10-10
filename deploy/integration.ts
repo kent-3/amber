@@ -334,22 +334,41 @@ async function claimTx(
     console.log(`claimTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
   }
   
-async function query(
+async function query_claimed(
   client: SecretNetworkClient,
-  gatewayHash: string,
-  gatewayAddress: string,
-): Promise<string> {
-  type PublicKeyResponse = { key: string };
-  const query_msg = { get_public_key: {} };
+  distributorHash: string,
+  distributorAddress: string,
+): Promise<boolean> {
+  const query_msg = { is_claimed: { index: "2" } };
 
   const response = (await client.query.compute.queryContract({
-    contractAddress: gatewayAddress,
-    codeHash: gatewayHash,
+    contractAddress: distributorAddress,
+    codeHash: distributorHash,
     query: query_msg,
-  })) as PublicKeyResponse;
+  })) as boolean;
 
-  console.log(`query response: ${response.key}`);
-  return response.key
+  console.log(`query claimed response: ${response}`);
+  return response
+}
+
+async function query_unclaimed(
+  client: SecretNetworkClient,
+  distributorHash: string,
+  distributorAddress: string,
+): Promise<string> {
+  interface Result {
+    Ok: string
+  }
+  const query_msg = { is_unclaimed: {} };
+
+  const response = (await client.query.compute.queryContract({
+    contractAddress: distributorAddress,
+    codeHash: distributorHash,
+    query: query_msg,
+  })) as Result;
+
+  console.log(`query unclaimed response: ${response.Ok}`);
+  return response.Ok
 }
 
 async function test_init_tx(
@@ -361,6 +380,8 @@ async function test_init_tx(
 ) {
   await sendTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
   await claimTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
+  await query_claimed(client, distributorHash, distributorAddress);
+  await query_unclaimed(client, distributorHash, distributorAddress);
 }
 
 async function runTestFunction(

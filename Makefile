@@ -14,18 +14,18 @@ clean:
 .PHONY: start-server
 start-server: # CTRL+C to stop
 	docker run -it --rm \
-		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 \
-		-v $$(pwd):/root/code \
+		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 -p 9091:9091 \
+		-v $$(pwd)/merkle-distributor:/root/code \
 		-v $$(pwd)/secret-secret:/root/secret-secret \
-		--name localsecret ghcr.io/scrtlabs/localsecret:v1.5.1-beta.4
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.4.0
 
 .PHONY: start-server-detached
 start-server-detached:
 	docker run -d --rm \
-		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 \
+		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 -p 9091:9091 \
 		-v $$(pwd)/merkle-distributor:/root/code \
 		-v $$(pwd)/secret-secret:/root/secret-secret \
-		--name localsecret ghcr.io/scrtlabs/localsecret:v1.5.1-beta.4
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.4.0
 
 .PHONY: list-code
 list-code:
@@ -38,6 +38,10 @@ run-tests:
 .PHONY: integration-test
 integration-test:
 	merkle-distributor/tests/setup.sh
+
+.PHONY: integration-test-2
+integration-test-2:
+	npx ts-node deploy/integration.ts
 
 # This is a local build with debug-prints activated. Debug prints only show up
 # in the local development chain (see the `start-server` command below)

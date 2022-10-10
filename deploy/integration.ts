@@ -48,8 +48,8 @@ const initializeSnip20 = async (
     {
       wasmByteCode: wasmCode,
       sender: client.address,
-      source: "",
-      builder: "",
+      source: "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
+      builder: "enigmampc/secret-contract-optimizer:1.0.9",
     },
     {
       gasLimit: 5000000,

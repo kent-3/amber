@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 pub static CONFIG_KEY: &[u8] = b"config";
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct State {
     pub token_addr: HumanAddr,
     pub token_hash: String,

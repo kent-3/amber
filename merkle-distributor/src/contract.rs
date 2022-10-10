@@ -53,7 +53,7 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             amount,
             proof,
         } => claim(deps, env, index.u128(), address, amount.u128(), proof),
-        HandleMsg::Retrieve { address, password } => retrieve(deps, env, address, password),
+        HandleMsg::Retrieve { address } => retrieve(deps, env, address),
     }
 }
 
@@ -158,13 +158,31 @@ pub fn is_unclaimed<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> S
 // send unclaimed tokens to target address
 pub fn retrieve<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
-    env: Env,
+    _env: Env,
     address: HumanAddr,
-    password: String,
 ) -> StdResult<HandleResponse> {
-    let unclaimed: String;
+    let state = config_read(&deps.storage).load()?;
 
-    todo!()
+    let response: snip20::BalanceResponse = snip20::QueryMsg::Balance {
+        address: state.contract_address,
+        key: state.viewing_key,
+    }
+    .query(&deps.querier, 1, state.token_hash.clone(), state.token_addr.clone())?;
+
+    let unclaimed = response.balance.amount;
+
+    Ok(HandleResponse {
+        messages: vec![snip20::transfer_msg(
+            address,
+            unclaimed,
+            None,
+            1,
+            state.token_hash,
+            state.token_addr,
+        )?],
+        log: vec![log("status", "success")],
+        data: None,
+    })
 }
 
 #[cfg(test)]

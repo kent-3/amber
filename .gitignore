@@ -38,5 +38,3 @@ maths.ods
 
 # Text file backups
 **/*.rs.bk
-
-Cargo.lock

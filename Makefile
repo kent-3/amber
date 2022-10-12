@@ -54,12 +54,12 @@ build-mainnet-reproducible:
 		--mount type=volume,source="$$(basename "$$(pwd)/merkle-distributor")_cache",target=/contract/target \
 		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
 		enigmampc/secret-contract-optimizer:1.0.9
-	sha256sum merkle-distributor/contract.wasm.gz >> merkle-distributor/hash.txt
+	sha256sum merkle-distributor/contract.wasm.gz > merkle-distributor/hash.txt
 	docker run --rm -v "$$(pwd)/snip20-reference-impl":/contract \
 		--mount type=volume,source="$$(basename "$$(pwd)/snip20-reference-impl")_cache",target=/contract/target \
 		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
 		enigmampc/secret-contract-optimizer:1.0.9
-	sha256sum snip20-reference-impl/contract.wasm.gz >> snip20-reference-impl/hash.txt
+	sha256sum snip20-reference-impl/contract.wasm.gz > snip20-reference-impl/hash.txt
 
 .PHONY: compress-wasm
 compress-wasm:

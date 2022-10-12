@@ -34,9 +34,17 @@ unit-test-nocapture:
 unit-test-receiver:
 	$(MAKE) -C tests/example-receiver unit-test
 
+.PHONY: run-tests
+run-tests:
+	tests/integration.sh
+
 .PHONY: integration-test
-integration-test: compile-optimized compile-optimized-receiver
-	if tests/integration.sh; then echo -n '\a'; else echo -n '\a'; sleep 0.125; echo -n '\a'; fi
+integration-test:
+	tests/setup.sh
+
+# .PHONY: integration-test
+# integration-test: compile-optimized compile-optimized-receiver
+# 	if tests/integration.sh; then echo -n '\a'; else echo -n '\a'; sleep 0.125; echo -n '\a'; fi
 
 compile-optimized-receiver:
 	$(MAKE) -C tests/example-receiver compile-optimized
@@ -73,7 +81,14 @@ start-server: # CTRL+C to stop
 	docker run -it --rm \
 		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 \
 		-v $$(pwd):/root/code \
-		--name localsecret ghcr.io/scrtlabs/localsecret:v1.4.0
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.3.1
+
+.PHONY: start-server-detached
+start-server-detached: # CTRL+C to stop
+	docker run -d --rm \
+		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 \
+		-v $$(pwd):/root/code \
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.3.1
 
 .PHONY: schema
 schema:

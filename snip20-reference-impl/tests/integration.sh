@@ -2,7 +2,7 @@
 
 set -eu
 set -o pipefail # If anything in a pipeline fails, the pipe's exit status is a failure
-#set -x # Print all commands for debugging
+# set -x # Print all commands for debugging
 
 declare -a KEY=(a b c d)
 

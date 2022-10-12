@@ -1,7 +1,5 @@
 # Build results
 /target
-contract.wasm
-contract.wasm.gz
 
 # Binaries
 *.wasm

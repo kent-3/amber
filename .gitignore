@@ -38,3 +38,7 @@ maths.ods
 
 # Text file backups
 **/*.rs.bk
+
+# Binaries
+*.wasm
+*.wasm.gz

@@ -63,7 +63,7 @@ compile-optimized-reproducible:
 	docker run --rm -v "$$(pwd)":/contract \
 		--mount type=volume,source="$$(basename "$$(pwd)")_cache",target=/code/target \
 		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-		enigmampc/secret-contract-optimizer:1.0.5
+		enigmampc/secret-contract-optimizer:1.0.9
 
 contract.wasm.gz: contract.wasm
 	cat ./contract.wasm | gzip -9 > ./contract.wasm.gz
@@ -71,9 +71,9 @@ contract.wasm.gz: contract.wasm
 .PHONY: start-server
 start-server: # CTRL+C to stop
 	docker run -it --rm \
-		-p 26657:26657 -p 26656:26656 -p 1317:1317 \
+		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 \
 		-v $$(pwd):/root/code \
-		--name localsecret ghcr.io/scrtlabs/localsecret
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.4.0
 
 .PHONY: schema
 schema:

@@ -252,7 +252,7 @@ async function initializeAndUploadContract() {
   
   const [snip20Hash, snip20Address] = await initializeSnip20(
     client,
-    "./secret-secret/snip20.wasm.gz",
+    "./snip20-reference-impl/contract.wasm.gz",
   );
   
   const [distributorHash, distributorAddress] = await initializeContract(

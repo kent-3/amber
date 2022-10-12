@@ -1,22 +1,11 @@
 SECRETCLI = docker exec -it localsecret /usr/bin/secretcli
 
-all:
-	RUSTFLAGS='-C link-arg=-s' cargo build --release --target wasm32-unknown-unknown
-	cp ./target/wasm32-unknown-unknown/release/*.wasm ./contract.wasm
-	## The following line is not necessary, may work only on linux (extra size optimization)
-	wasm-opt -Os ./contract.wasm -o ./contract.wasm
-	cat ./contract.wasm | gzip -9 > ./contract.wasm.gz
-
-clean:
-	cargo clean
-	-rm -f ./contract.wasm ./contract.wasm.gz
-
 .PHONY: start-server
 start-server: # CTRL+C to stop
 	docker run -it --rm \
 		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 -p 9091:9091 \
 		-v $$(pwd)/merkle-distributor:/root/code \
-		-v $$(pwd)/secret-secret:/root/secret-secret \
+		-v $$(pwd)/snip20-reference-impl:/root/secret-secret \
 		--name localsecret ghcr.io/scrtlabs/localsecret:v1.4.0
 
 .PHONY: start-server-detached
@@ -24,7 +13,7 @@ start-server-detached:
 	docker run -d --rm \
 		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 -p 9091:9091 \
 		-v $$(pwd)/merkle-distributor:/root/code \
-		-v $$(pwd)/secret-secret:/root/secret-secret \
+		-v $$(pwd)/snip20-reference-impl:/root/secret-secret \
 		--name localsecret ghcr.io/scrtlabs/localsecret:v1.4.0
 
 .PHONY: list-code
@@ -61,19 +50,28 @@ _build-mainnet:
 # like build-mainnet, but slower and more deterministic
 .PHONY: build-mainnet-reproducible
 build-mainnet-reproducible:
-	docker run --rm -v "$$(pwd)":/contract \
-		--mount type=volume,source="$$(basename "$$(pwd)")_cache",target=/contract/target \
+	docker run --rm -v "$$(pwd)/merkle-distributor":/contract \
+		--mount type=volume,source="$$(basename "$$(pwd)/merkle-distributor")_cache",target=/contract/target \
 		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
 		enigmampc/secret-contract-optimizer:1.0.9
+	sha256sum merkle-distributor/contract.wasm.gz >> merkle-distributor/hash.txt
+	docker run --rm -v "$$(pwd)/snip20-reference-impl":/contract \
+		--mount type=volume,source="$$(basename "$$(pwd)/snip20-reference-impl")_cache",target=/contract/target \
+		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+		enigmampc/secret-contract-optimizer:1.0.9
+	sha256sum snip20-reference-impl/contract.wasm.gz >> snip20-reference-impl/hash.txt
 
 .PHONY: compress-wasm
 compress-wasm:
-	cp ./target/wasm32-unknown-unknown/release/*.wasm ./contract.wasm
+	cp ./target/wasm32-unknown-unknown/release/merkle_distributor.wasm ./merkle-distributor/contract.wasm
+	cp ./target/wasm32-unknown-unknown/release/snip20_reference_impl.wasm ./snip20-reference-impl/contract.wasm
 	@## The following line is not necessary, may work only on linux (extra size optimization)
-	wasm-opt -Os ./contract.wasm -o ./contract.wasm
-	cat ./contract.wasm | gzip -9 > ./contract.wasm.gz
-	mv contract.wasm merkle-distributor/
-	mv contract.wasm.gz merkle-distributor/
+	wasm-opt -Os ./merkle-distributor/contract.wasm -o ./merkle-distributor/contract.wasm
+	wasm-opt -Os ./snip20-reference-impl/contract.wasm -o ./snip20-reference-impl/contract.wasm
+	cat ./merkle-distributor/contract.wasm | gzip -9 > ./merkle-distributor/contract.wasm.gz
+	cat ./snip20-reference-impl/contract.wasm | gzip -9 > ./snip20-reference-impl/contract.wasm.gz
+	rm ./merkle-distributor/contract.wasm
+	rm ./snip20-reference-impl/contract.wasm
 
 .PHONY: schema
 schema:
@@ -82,3 +80,7 @@ schema:
 .PHONY: unit-test
 unit-tests:
 	cargo unit-test
+
+.PHONY: deploy
+deploy:
+	npx ts-node deploy/token2testnet.ts

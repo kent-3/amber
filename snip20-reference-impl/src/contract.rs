@@ -3216,7 +3216,7 @@ mod tests {
         };
         let handle_result = handle(&mut deps, mock_env("not_admin", &[]), pause_msg);
         let error = extract_error_msg(handle_result);
-        assert!(error.contains(&admin_err.clone()));
+        assert!(error.contains(&admin_err));
 
         let mint_msg = HandleMsg::AddMinters {
             minters: vec![HumanAddr("not_admin".to_string())],
@@ -3224,7 +3224,7 @@ mod tests {
         };
         let handle_result = handle(&mut deps, mock_env("not_admin", &[]), mint_msg);
         let error = extract_error_msg(handle_result);
-        assert!(error.contains(&admin_err.clone()));
+        assert!(error.contains(&admin_err));
 
         let mint_msg = HandleMsg::RemoveMinters {
             minters: vec![HumanAddr("admin".to_string())],
@@ -3232,7 +3232,7 @@ mod tests {
         };
         let handle_result = handle(&mut deps, mock_env("not_admin", &[]), mint_msg);
         let error = extract_error_msg(handle_result);
-        assert!(error.contains(&admin_err.clone()));
+        assert!(error.contains(&admin_err));
 
         let mint_msg = HandleMsg::SetMinters {
             minters: vec![HumanAddr("not_admin".to_string())],
@@ -3240,7 +3240,7 @@ mod tests {
         };
         let handle_result = handle(&mut deps, mock_env("not_admin", &[]), mint_msg);
         let error = extract_error_msg(handle_result);
-        assert!(error.contains(&admin_err.clone()));
+        assert!(error.contains(&admin_err));
 
         let change_admin_msg = HandleMsg::ChangeAdmin {
             address: HumanAddr("not_admin".to_string()),
@@ -3248,7 +3248,7 @@ mod tests {
         };
         let handle_result = handle(&mut deps, mock_env("not_admin", &[]), change_admin_msg);
         let error = extract_error_msg(handle_result);
-        assert!(error.contains(&admin_err.clone()));
+        assert!(error.contains(&admin_err));
     }
 
     #[test]
@@ -3674,9 +3674,9 @@ mod tests {
         let env = mock_env("instantiator", &[]);
         let init_msg = InitMsg {
             name: init_name.clone(),
-            admin: Some(init_admin.clone()),
+            admin: Some(init_admin),
             symbol: init_symbol.clone(),
-            decimals: init_decimals.clone(),
+            decimals: init_decimals,
             initial_balances: Some(vec![InitialBalance {
                 address: HumanAddr("giannis".to_string()),
                 amount: init_supply,
@@ -3739,10 +3739,10 @@ mod tests {
         let mut deps = mock_dependencies(20, &[]);
         let env = mock_env("instantiator", &[]);
         let init_msg = InitMsg {
-            name: init_name.clone(),
-            admin: Some(init_admin.clone()),
-            symbol: init_symbol.clone(),
-            decimals: init_decimals.clone(),
+            name: init_name,
+            admin: Some(init_admin),
+            symbol: init_symbol,
+            decimals: init_decimals,
             initial_balances: Some(vec![InitialBalance {
                 address: HumanAddr("giannis".to_string()),
                 amount: init_supply,
@@ -3808,10 +3808,10 @@ mod tests {
         ))
         .unwrap();
         let init_msg = InitMsg {
-            name: init_name.clone(),
-            admin: Some(init_admin.clone()),
-            symbol: init_symbol.clone(),
-            decimals: init_decimals.clone(),
+            name: init_name,
+            admin: Some(init_admin),
+            symbol: init_symbol,
+            decimals: init_decimals,
             initial_balances: Some(vec![InitialBalance {
                 address: HumanAddr("giannis".to_string()),
                 amount: init_supply,
@@ -3865,10 +3865,10 @@ mod tests {
         ))
         .unwrap();
         let init_msg = InitMsg {
-            name: init_name.clone(),
-            admin: Some(init_admin.clone()),
-            symbol: init_symbol.clone(),
-            decimals: init_decimals.clone(),
+            name: init_name,
+            admin: Some(init_admin),
+            symbol: init_symbol,
+            decimals: init_decimals,
             initial_balances: Some(vec![InitialBalance {
                 address: HumanAddr("giannis".to_string()),
                 amount: init_supply,
@@ -3922,10 +3922,10 @@ mod tests {
         ))
         .unwrap();
         let init_msg = InitMsg {
-            name: init_name.clone(),
-            admin: Some(init_admin.clone()),
-            symbol: init_symbol.clone(),
-            decimals: init_decimals.clone(),
+            name: init_name,
+            admin: Some(init_admin),
+            symbol: init_symbol,
+            decimals: init_decimals,
             initial_balances: Some(vec![InitialBalance {
                 address: HumanAddr("giannis".to_string()),
                 amount: init_supply,
@@ -3967,10 +3967,10 @@ mod tests {
         let mut deps = mock_dependencies(20, &[]);
         let env = mock_env("instantiator", &[]);
         let init_msg = InitMsg {
-            name: init_name.clone(),
-            admin: Some(init_admin.clone()),
-            symbol: init_symbol.clone(),
-            decimals: init_decimals.clone(),
+            name: init_name,
+            admin: Some(init_admin),
+            symbol: init_symbol,
+            decimals: init_decimals,
             initial_balances: Some(vec![InitialBalance {
                 address: HumanAddr("giannis".to_string()),
                 amount: init_supply,
@@ -4077,7 +4077,7 @@ mod tests {
         let query_msg = QueryMsg::Allowance {
             owner: HumanAddr("giannis".to_string()),
             spender: HumanAddr("lebron".to_string()),
-            key: vk1.0.clone(),
+            key: vk1.0,
         };
         let query_result = query(&deps, query_msg);
         let allowance = match from_binary(&query_result.unwrap()).unwrap() {
@@ -4101,7 +4101,7 @@ mod tests {
         let query_msg = QueryMsg::Allowance {
             owner: HumanAddr("lebron".to_string()),
             spender: HumanAddr("giannis".to_string()),
-            key: vk2.0.clone(),
+            key: vk2.0,
         };
         let query_result = query(&deps, query_msg);
         let allowance = match from_binary(&query_result.unwrap()).unwrap() {

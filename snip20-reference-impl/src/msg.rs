@@ -9,7 +9,7 @@ use crate::viewing_key::ViewingKey;
 use cosmwasm_std::{Binary, HumanAddr, StdError, StdResult, Uint128};
 use secret_toolkit::permit::Permit;
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema)]
 pub struct InitialBalance {
     pub address: HumanAddr,
     pub amount: Uint128,
@@ -372,7 +372,7 @@ impl QueryMsg {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryWithPermit {
     Allowance {
@@ -438,19 +438,19 @@ pub enum QueryAnswer {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema)]
 pub struct CreateViewingKeyResponse {
     pub key: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseStatus {
     Success,
     Failure,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ContractStatusLevel {
     NormalRun,
@@ -494,7 +494,7 @@ mod tests {
     use super::*;
     use cosmwasm_std::{from_slice, StdResult};
 
-    #[derive(Serialize, Deserialize, JsonSchema, Debug, PartialEq)]
+    #[derive(Serialize, Deserialize, JsonSchema, Debug, PartialEq, Eq)]
     #[serde(rename_all = "snake_case")]
     pub enum Something {
         Var { padding: Option<String> },

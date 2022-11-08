@@ -67,11 +67,14 @@ jobs:
           command: clippy
           args: -- -D warnings
 
-      # TODO: we should check
-      # CHANGES_IN_REPO=$(git status --porcelain)
-      # after this, but I don't know how
-      - name: Generate Schema
+      - name: Generate distributor schema
         uses: actions-rs/cargo@v1
         with:
           command: schema
-          args: --locked
+          args: --locked -p merkle-distributor
+
+      - name: Generate snip20 schema
+        uses: actions-rs/cargo@v1
+        with:
+          command: schema
+          args: --locked -p snip20-reference-impl

@@ -3,8 +3,8 @@
 # Start docker
 make start-server-detached
 
-# Wait 30 seconds for localsecret to start producing blocks
-sleep 30
+# Wait for localsecret to start producing blocks
+sleep 20
 
 make run-tests
 if [ $? -eq 0 ]

@@ -3,7 +3,8 @@ import fs from "fs";
 import TOML from "@iarna/toml";
 import 'dotenv/config' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 
-const grpcWebUrl = process.env.GRPC_WEB_URL;
+const grpcWebUrl = process.env.ARCHIVE_GRPC_WEB_URL;
+const blockHeight = process.env.BLOCK_HEIGHT; // must be a string
 
 // To create a readonly secret.js client, just pass in a gRPC-web endpoint
 const secretjs = await SecretNetworkClient.create({
@@ -12,7 +13,7 @@ const secretjs = await SecretNetworkClient.create({
 });
 
 // Get all validators
-const { validators } = await secretjs.query.staking.validators({ status: "BOND_STATUS_BONDED" }, new grpc.Metadata({"x-cosmos-block-height": "4008888"}))
+const { validators } = await secretjs.query.staking.validators({ status: "BOND_STATUS_BONDED" }, new grpc.Metadata({"x-cosmos-block-height": blockHeight}))
 let operatorAddresses = []
 let delegations = []
 let result = {}

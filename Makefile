@@ -26,7 +26,7 @@ run-tests:
 
 .PHONY: integration-test
 integration-test:
-	snip20-reference-impl/test/setup.sh
+	snip20-reference-impl/tests/setup.sh
 	merkle-distributor/tests/setup.sh
 
 .PHONY: integration-test-2

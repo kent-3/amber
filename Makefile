@@ -76,7 +76,8 @@ compress-wasm:
 
 .PHONY: schema
 schema:
-	cargo run --example schema
+	cargo run --example schema -p merkle-distributor && mv schema/ merkle-distributor/
+	cargo run --example schema -p snip20-reference-impl && mv schema/ snip20-reference-impl/
 
 .PHONY: unit-test
 unit-tests:

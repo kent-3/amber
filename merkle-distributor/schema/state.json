@@ -3,25 +3,45 @@
   "title": "State",
   "type": "object",
   "required": [
-    "count",
-    "owner"
+    "admin",
+    "claimed_bitmap",
+    "contract_address",
+    "merkle_root",
+    "token_addr",
+    "token_hash",
+    "viewing_key"
   ],
   "properties": {
-    "count": {
-      "type": "integer",
-      "format": "int32"
+    "admin": {
+      "$ref": "#/definitions/HumanAddr"
     },
-    "owner": {
-      "$ref": "#/definitions/CanonicalAddr"
+    "claimed_bitmap": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "format": "uint128",
+        "minimum": 0.0
+      }
+    },
+    "contract_address": {
+      "$ref": "#/definitions/HumanAddr"
+    },
+    "merkle_root": {
+      "type": "string"
+    },
+    "token_addr": {
+      "$ref": "#/definitions/HumanAddr"
+    },
+    "token_hash": {
+      "type": "string"
+    },
+    "viewing_key": {
+      "type": "string"
     }
   },
   "definitions": {
-    "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+    "HumanAddr": {
       "type": "string"
-    },
-    "CanonicalAddr": {
-      "$ref": "#/definitions/Binary"
     }
   }
 }

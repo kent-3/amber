@@ -5,33 +5,63 @@
     {
       "type": "object",
       "required": [
-        "increment"
+        "claim"
       ],
       "properties": {
-        "increment": {
-          "type": "object"
+        "claim": {
+          "type": "object",
+          "required": [
+            "address",
+            "amount",
+            "index",
+            "proof"
+          ],
+          "properties": {
+            "address": {
+              "$ref": "#/definitions/HumanAddr"
+            },
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "index": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "proof": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
         }
       }
     },
     {
       "type": "object",
       "required": [
-        "reset"
+        "retrieve"
       ],
       "properties": {
-        "reset": {
+        "retrieve": {
           "type": "object",
           "required": [
-            "count"
+            "address"
           ],
           "properties": {
-            "count": {
-              "type": "integer",
-              "format": "int32"
+            "address": {
+              "$ref": "#/definitions/HumanAddr"
             }
           }
         }
       }
     }
-  ]
+  ],
+  "definitions": {
+    "HumanAddr": {
+      "type": "string"
+    },
+    "Uint128": {
+      "type": "string"
+    }
+  }
 }

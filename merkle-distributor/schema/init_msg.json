@@ -3,12 +3,24 @@
   "title": "InitMsg",
   "type": "object",
   "required": [
-    "count"
+    "merkle_root",
+    "token_addr",
+    "token_hash"
   ],
   "properties": {
-    "count": {
-      "type": "integer",
-      "format": "int32"
+    "merkle_root": {
+      "type": "string"
+    },
+    "token_addr": {
+      "$ref": "#/definitions/HumanAddr"
+    },
+    "token_hash": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "HumanAddr": {
+      "type": "string"
     }
   }
 }

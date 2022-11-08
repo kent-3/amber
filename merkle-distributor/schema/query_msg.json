@@ -5,13 +5,37 @@
     {
       "type": "object",
       "required": [
-        "get_count"
+        "is_claimed"
       ],
       "properties": {
-        "get_count": {
+        "is_claimed": {
+          "type": "object",
+          "required": [
+            "index"
+          ],
+          "properties": {
+            "index": {
+              "$ref": "#/definitions/Uint128"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "is_unclaimed"
+      ],
+      "properties": {
+        "is_unclaimed": {
           "type": "object"
         }
       }
     }
-  ]
+  ],
+  "definitions": {
+    "Uint128": {
+      "type": "string"
+    }
+  }
 }

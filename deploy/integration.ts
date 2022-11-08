@@ -3,16 +3,16 @@ import { Wallet, SecretNetworkClient, fromUtf8 } from "secretjs";
 import fs from "fs";
 import assert from "assert";
 import 'dotenv/config'
-
+ 
 var mnemonic: string;
 var endpoint: string = "http://localhost:9091";
 var chainId: string = "secretdev-1";
 var ADMIN_ADDRESS: string;
 
 // uncomment when using .env file
-// mnemonic = process.env.MNEMONIC!;
-// endpoint = process.env.GRPC_WEB_URL!;
-// chainId = process.env.CHAIN_ID!;
+mnemonic = process.env.MNEMONIC!;
+endpoint = process.env.GRPC_WEB_URL!;
+chainId = process.env.CHAIN_ID!;
 // ADMIN_ADDRESS: string = process.env.ADMIN_ADDRESS!;
 
 

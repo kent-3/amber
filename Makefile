@@ -6,7 +6,7 @@ start-server: # CTRL+C to stop
 		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 -p 9091:9091 \
 		-v $$(pwd)/merkle-distributor:/root/code \
 		-v $$(pwd)/snip20-reference-impl:/root/secret-secret \
-		--name localsecret ghcr.io/scrtlabs/localsecret:v1.4.0
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.5.1
 
 .PHONY: start-server-detached
 start-server-detached:
@@ -14,7 +14,7 @@ start-server-detached:
 		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 -p 9091:9091 \
 		-v $$(pwd)/merkle-distributor:/root/code \
 		-v $$(pwd)/snip20-reference-impl:/root/secret-secret \
-		--name localsecret ghcr.io/scrtlabs/localsecret:v1.4.0
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.5.1
 
 .PHONY: list-code
 list-code:
@@ -26,6 +26,7 @@ run-tests:
 
 .PHONY: integration-test
 integration-test:
+	snip20-reference-impl/test/setup.sh
 	merkle-distributor/tests/setup.sh
 
 .PHONY: integration-test-2

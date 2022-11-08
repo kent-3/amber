@@ -17,11 +17,14 @@ Install dependencies:
 npm install
 ```
 ```
-python3 -m pip install eth-abi eth-brownie eth-utils toml toolz tqdm
+python3 -m pip install -r requirements.txt
 ```
 
 Create a `.env` file with the following variables:
 ```
+MNEMONIC=
+ADMIN_ADDRESS=
+CHAIN_ID=
 GRPC_WEB_URL=
 MINIMUM_STAKE=
 ```
@@ -37,7 +40,7 @@ python3 scripts/snapshot_secret.py
 ```
 (need Docker for this part to run localsecret)
 ```
-cd merkle-distributor/
-make start-server
-./tests/integration.sh
+make integration-test
 ```
+```
+make integration-test-2

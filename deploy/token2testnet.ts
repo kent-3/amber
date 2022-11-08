@@ -10,9 +10,9 @@ var chainId: string = "secretdev-1";
 var ADMIN_ADDRESS: string;
 
 // uncomment when using .env file
-// mnemonic = process.env.MNEMONIC!;
-// endpoint = process.env.GRPC_WEB_URL!;
-// chainId = process.env.CHAIN_ID!;
+mnemonic = process.env.MNEMONIC!;
+endpoint = process.env.GRPC_WEB_URL!;
+chainId = process.env.CHAIN_ID!;
 // ADMIN_ADDRESS = process.env.ADMIN_ADDRESS!;
 
 
@@ -100,7 +100,7 @@ const initializeSnip20 = async (
         "enable_mint": false,
         /// Indicates whether burn functionality should be enabled
         /// default: False
-        "enable_burn": true,
+        "enable_burn": false,
     }
   };
   ///////////////////////////////////////////////////////////////////////

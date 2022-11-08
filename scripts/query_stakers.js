@@ -1,7 +1,7 @@
 import { SecretNetworkClient, grpc } from "secretjs";
 import fs from "fs";
 import TOML from "@iarna/toml";
-import 'dotenv/config' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
+import 'dotenv/config'
 
 const grpcWebUrl = process.env.ARCHIVE_GRPC_WEB_URL;
 const blockHeight = process.env.BLOCK_HEIGHT; // must be a string
@@ -24,19 +24,22 @@ let bonus_count
 // For each validator, get all delegator addresses
 for (let i = 0; i < validators.length; i++) {
     let validator_address = validators[i].operatorAddress
+    // this tells the for-loop to skip 0% commission validators and any validator in the list
     if (validators[i].commission.commissionRates.rate == "0" 
         || ["AmberDAO", "Kraken", "Staked", "Chorus One", "B-Harvest", "figment", "Outlier Ventures", "Huobi", "HashQuark"]
         .includes(validators[i].description.moniker)) {
         continue
     }
+    // keeps track of which validators are being included 
     operatorAddresses.push(validator_address)
-    let delegation = await secretjs.query.staking.validatorDelegations({validatorAddr: validator_address, pagination: {limit:'1000000'}}, new grpc.Metadata({"x-cosmos-block-height": "4008888"}))
+
+    // get a list of all delegations for the current validator
+    let delegation = await secretjs.query.staking.validatorDelegations({validatorAddr: validator_address, pagination: {limit:'1000000'}}, new grpc.Metadata({"x-cosmos-block-height": blockHeight}))
     let count = []
-    // For each delegator, check if staking amount meets criteria and save KV pair with address and amount
+    // For each delegation, check if staking amount meets criteria and save KV pair with address and amount
     for (let j = 0; j < delegation.delegationResponses.length; j++) {
         if ((delegation.delegationResponses[j].balance.amount / 1000000) >= process.env.MINIMUM_STAKE) {
             let address = delegation.delegationResponses[j].delegation.delegatorAddress
-            // let amount = delegation.delegationResponses[j].balance.amount / 1000000
             count.push(address)
             if (!delegations.includes(address)) {
                 delegations.push(address)
@@ -48,7 +51,7 @@ for (let i = 0; i < validators.length; i++) {
     console.log(`${validators[i].description.moniker}: ${count.length}`)
 }
 
-// Bonus for AmberDAO
+// Bonus for AmberDAO stakers
 let validator_address = validators[18].operatorAddress
 operatorAddresses.push(validator_address)
 let delegation = await secretjs.query.staking.validatorDelegations({validatorAddr: validator_address, pagination: {limit:'1000000'}}, new grpc.Metadata({"x-cosmos-block-height": "4008888"}))
@@ -56,7 +59,6 @@ let count = []
 for (let j = 0; j < delegation.delegationResponses.length; j++) {
     if ((delegation.delegationResponses[j].balance.amount / 1000000) >= process.env.MINIMUM_STAKE) {
         let address = delegation.delegationResponses[j].delegation.delegatorAddress
-        // let amount = delegation.delegationResponses[j].balance.amount / 1000000
         count.push(address)
         if (!delegations.includes(address)) {
             delegations.push(address)
@@ -75,5 +77,3 @@ console.log(`${bonus_count} AmberDAO stakers`)
 console.log(`Total AMBER payout = ${(normal_count * 200000 + bonus_count * 250000) / 1000000}`);
 fs.writeFileSync("snapshot/00-bech32.toml",TOML.stringify(result))
 fs.writeFileSync("snapshot/00-bech32-bonus.toml",TOML.stringify(bonus))
-
-// TODO finalize normal & bonus airdrop amounts, and MINIMUM_STAKE

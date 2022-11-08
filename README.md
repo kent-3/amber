@@ -23,7 +23,6 @@ python3 -m pip install -r requirements.txt
 Create a `.env` file with the following variables:
 ```
 MNEMONIC=
-ADMIN_ADDRESS=
 CHAIN_ID=
 GRPC_WEB_URL=
 ARCHIVE_GRPC_WEB_URL=

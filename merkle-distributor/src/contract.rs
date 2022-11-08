@@ -25,6 +25,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         claimed_bitmap: vec![],
         contract_address: env.contract.address,
         viewing_key: "amber_rocks".to_string(),
+        admin: env.message.sender,
     };
 
     config(&mut deps.storage).save(&state)?;
@@ -158,10 +159,14 @@ pub fn is_unclaimed<S: Storage, A: Api, Q: Querier>(deps: &Extern<S, A, Q>) -> S
 // send unclaimed tokens to target address
 pub fn retrieve<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
-    _env: Env,
+    env: Env,
     address: HumanAddr,
 ) -> StdResult<HandleResponse> {
     let state = config_read(&deps.storage).load()?;
+
+    if state.admin != env.message.sender {
+        return Err(StdError::generic_err("only admin can do that"));
+    }
 
     let response: snip20::BalanceResponse = snip20::QueryMsg::Balance {
         address: state.contract_address,

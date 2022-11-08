@@ -131,8 +131,8 @@ const initializeContract = async (
     {
       wasmByteCode: wasmCode,
       sender: client.address,
-      source: "",
-      builder: "",
+      source: "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
+      builder: "enigmampc/secret-contract-optimizer:1.0.9",
     },
     {
       gasLimit: 5000000,
@@ -375,6 +375,37 @@ async function claimTx(
     console.log(`retrieveTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
   }
 
+  async function retrieveTxFail(
+    client: SecretNetworkClient,
+    snip20Hash: string,
+    snip20Address: string,
+    distributorHash: string,
+    distributorAddress: string,
+  ) {
+    const handle_msg = {
+      retrieve:{ 
+        address: client.address,
+      }
+    };
+  
+    const tx = await client.tx.compute.executeContract(
+      {
+        sender: client.address,
+        contractAddress: distributorAddress,
+        codeHash: distributorHash,
+        msg: handle_msg,
+        sentFunds: [],
+      },
+      {
+        gasLimit: 500000,
+      }
+    );
+  
+    assert(tx.rawLog, 'failed to execute message; message index: 0: {"generic_err":{"msg":"only admin can do that"}}: execute contract failed')
+  
+    console.log(`retrieveTxFail used \x1b[33m${tx.gasUsed}\x1b[0m gas\n`);
+  }
+
 async function query_claimed(
   client: SecretNetworkClient,
   distributorHash: string,
@@ -420,10 +451,21 @@ async function test_init_tx(
   distributorAddress: string
 ) {
   await sendTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
+  const query1 = await query_unclaimed(client, distributorHash, distributorAddress);
+  assert(query1, "5110600000")
   await claimTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
+  const query2 = await query_unclaimed(client, distributorHash, distributorAddress);
+  assert(query2, "5110600000")
+  if (chainId == "secretdev-1") {
+    const differentClient = await initializeClient(endpoint, chainId);
+    await fillUpFromFaucet(differentClient, 100_000_000);
+    await retrieveTxFail(differentClient, snip20Hash, snip20Address, distributorHash, distributorAddress);
+  }
+  
   await retrieveTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
   await query_claimed(client, distributorHash, distributorAddress);
-  await query_unclaimed(client, distributorHash, distributorAddress);
+  const query3 = await query_unclaimed(client, distributorHash, distributorAddress);
+  assert(query3, "0")
 }
 
 async function runTestFunction(

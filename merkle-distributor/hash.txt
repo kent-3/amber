@@ -1,1 +1,1 @@
-dacf5c97de003bbff23cb7ce4a3b4a2d810ff68d318fc07be43c65fb50df9675  merkle-distributor/contract.wasm.gz
+6bb6e5dc5dba65754a4f8235a8fe974d1656886ab6e72c5d3624b4ef285d59fc  merkle-distributor/contract.wasm.gz

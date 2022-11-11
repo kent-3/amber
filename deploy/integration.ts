@@ -14,6 +14,38 @@ var chainId: string = "secretdev-1";
 // chainId = process.env.CHAIN_ID!;
 
 
+interface Trait {
+  display_type?: string;
+  trait_type?: string;
+  value: string;
+  max_value?: string;
+}
+interface Authentication {
+  key?: string;
+  user?: string;
+}
+interface MediaFile {
+  file_type?: string;
+  extension?: string;
+  authentication?: Authentication;
+  url: string;
+}
+interface Extension {
+  image?: string;
+  image_data?: string;
+  external_url?: string;
+  description?: string;
+  name?: string;
+  attributes?: Trait[];
+  media?: MediaFile[];
+  protected_attributes: string[];
+}
+interface Metadata {
+  token_uri?: string;
+  extension?: Extension;
+}
+
+
 // Returns a client with which we can interact with secret network
 const initializeClient = async (endpoint: string, chainId: string) => {
   let wallet: Wallet;
@@ -116,7 +148,92 @@ const initializeSnip20 = async (
   return contractInfo;
 };
 
-const initializeContract = async (
+const initializeSnip721 = async (
+  client: SecretNetworkClient,
+  contractPath: string,
+) => {
+  const wasmCode = fs.readFileSync(contractPath);
+  console.log("\nUploading contract");
+
+  const uploadReceipt = await client.tx.compute.storeCode(
+    {
+      wasmByteCode: wasmCode,
+      sender: client.address,
+      source: "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
+      builder: "enigmampc/secret-contract-optimizer:1.0.9",
+    },
+    {
+      gasLimit: 5000000,
+    }
+  );
+
+  if (uploadReceipt.code !== 0) {
+    console.log(
+      `Failed to get code id: ${JSON.stringify(uploadReceipt.rawLog)}`
+    );
+    throw new Error(`Failed to upload contract`);
+  }
+
+  const codeIdKv = uploadReceipt.jsonLog![0].events[0].attributes.find(
+    (a: any) => {
+      return a.key === "code_id";
+    }
+  );
+
+  console.log(`Upload used \x1b[33m${uploadReceipt.gasUsed}\x1b[0m gas\n`);
+
+  const codeId = Number(codeIdKv!.value);
+  console.log("Contract codeId: ", codeId);
+
+  const contractCodeHash = await client.query.compute.codeHash(codeId);
+  console.log(`Contract hash: ${contractCodeHash}`);
+
+  const init_msg = {
+    name: "AmburNFT",
+    symbol: "ffffff",
+    entropy: "L bro",
+    config: {
+      public_token_supply: true,
+      public_owner: false,
+      enable_sealed_metadata: false,
+      unwrapped_metadata_is_private: true,
+      minter_may_update_metadata: true,
+      owner_may_update_metadata: false,
+      enable_burn: true      
+    },
+  };
+  const contract = await client.tx.compute.instantiateContract(
+    {
+      sender: client.address,
+      codeId,
+      initMsg: init_msg,
+      codeHash: contractCodeHash,
+      label: "My SNIP721" + Math.ceil(Math.random() * 10000), // The label should be unique for every contract, add random string in order to maintain uniqueness
+    },
+    {
+      gasLimit: 5000000,
+    }
+  );
+
+  if (contract.code !== 0) {
+    throw new Error(
+      `Failed to instantiate the contract with the following error ${contract.rawLog}`
+    );
+  }
+
+  const contractAddress = contract.arrayLog!.find(
+    (log) => log.type === "message" && log.key === "contract_address"
+  )!.value;
+
+  console.log(`Contract address: ${contractAddress}\n`);
+
+  console.log(`Init used \x1b[33m${contract.gasUsed}\x1b[0m gas`);
+
+  var contractInfo: [string, string] = [contractCodeHash, contractAddress];
+  return contractInfo;
+};
+
+const initializeDistributorContract = async (
   client: SecretNetworkClient,
   contractPath: string,
   snip20Hash: string,
@@ -234,20 +351,27 @@ async function initializeAndUploadContract() {
     client,
     "./snip20-reference-impl/contract.wasm.gz",
   );
-  
-  const [distributorHash, distributorAddress] = await initializeContract(
+
+  const [distributorHash, distributorAddress] = await initializeDistributorContract(
     client,
     "./merkle-distributor/contract.wasm.gz",
     snip20Hash,
     snip20Address,
   );
 
-  var clientInfo: [SecretNetworkClient, string, string, string, string] = [
+  const [snip721Hash, snip721Address] = await initializeSnip721(
+    client,
+    "./amburnft/contract.wasm.gz",
+  );
+
+  var clientInfo: [SecretNetworkClient, string, string, string, string, string, string] = [
     client,
     snip20Hash,
     snip20Address,
     distributorHash,
     distributorAddress,
+    snip721Hash,
+    snip721Address
   ];
   return clientInfo;
 }
@@ -263,6 +387,44 @@ async function sendTx(
     send:{
         recipient: distributorAddress,
         amount: "5110600000"
+    }
+  };
+
+  const tx = await client.tx.compute.executeContract(
+    {
+      sender: client.address,
+      contractAddress: snip20Address,
+      codeHash: snip20Hash,
+      msg: handle_msg,
+      sentFunds: [],
+    },
+    {
+      gasLimit: 200000,
+    }
+  );
+
+  if (tx.code !== 0) {
+    throw new Error(
+      `Failed with the following error:\n ${tx.rawLog}`
+    );
+  };
+
+  console.log(`sendTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
+}
+
+async function fund721Tx(
+  client: SecretNetworkClient,
+  snip20Hash: string,
+  snip20Address: string,
+  distributorHash: string,
+  distributorAddress: string,
+  snip721Hash: string,
+  snip721Address: string,
+) {
+  const handle_msg = {
+    send:{
+        recipient: snip721Address,
+        amount: "44000000"
     }
   };
 
@@ -446,7 +608,9 @@ async function test_init_tx(
   snip20Hash: string,
   snip20Address: string,
   distributorHash: string,
-  distributorAddress: string
+  distributorAddress: string,
+  snip721Hash: string,
+  snip721Address: string,
 ) {
   await sendTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
   const query1 = await query_unclaimed(client, distributorHash, distributorAddress);
@@ -466,6 +630,19 @@ async function test_init_tx(
   assert(query3, "0")
 }
 
+async function test_nft_stuff(
+  client: SecretNetworkClient,
+  snip20Hash: string,
+  snip20Address: string,
+  distributorHash: string,
+  distributorAddress: string,
+  snip721Hash: string,
+  snip721Address: string,
+) {
+  await fund721Tx(client, snip20Hash, snip20Address, distributorHash, distributorAddress, snip721Hash, snip721Address)
+
+}
+
 async function runTestFunction(
   tester: (
     client: SecretNetworkClient,
@@ -473,20 +650,24 @@ async function runTestFunction(
     snip20Address: string,
     depositorHash: string,
     depositorAddress: string,
+    snip721Hash: string,
+    snip721Address: string,
   ) => void,
   client: SecretNetworkClient,
   snip20Hash: string,
   snip20Address: string,
   depositorHash: string,
   depositorAddress: string,
+  snip721Hash: string,
+  snip721Address: string,
 ) {
   console.log(`\n[  \x1b[35mTEST\x1b[0m  ] ${tester.name}\n`);
-  await tester(client, snip20Hash, snip20Address, depositorHash, depositorAddress);
+  await tester(client, snip20Hash, snip20Address, depositorHash, depositorAddress, snip721Hash, snip721Address);
   console.log(`\n[   \x1b[32mOK\x1b[0m   ] ${tester.name}\n`);
 }
 
 (async () => {
-  const [client, snip20Hash, snip20Address, depositorHash, depositorAddress] =
+  const [client, snip20Hash, snip20Address, depositorHash, depositorAddress, snip721Hash, snip721Address] =
     await initializeAndUploadContract();
 
   await runTestFunction(
@@ -496,5 +677,17 @@ async function runTestFunction(
     snip20Address, 
     depositorHash, 
     depositorAddress,
+    snip721Hash,
+    snip721Address,
+  );
+  await runTestFunction(
+    test_nft_stuff,
+    client,
+    snip20Hash, 
+    snip20Address, 
+    depositorHash, 
+    depositorAddress,
+    snip721Hash,
+    snip721Address,
   );
 })();

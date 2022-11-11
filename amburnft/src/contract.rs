@@ -1229,8 +1229,10 @@ fn burn_nft<S: Storage, A: Api, Q: Querier>(
                 .unwrap()
                 .parse::<u128>()
                 .map_err(|err| StdError::generic_err(err.to_string()))?;
-            let token_hash: String = "db93ffb6ee9d5b924bc8f70e30c73ed809d210bca9b8aaab14eea609b55de166".to_string();
-            let token_addr: HumanAddr = HumanAddr("secret1gdhgaeq9jvzwyjqc32j7cp00gd6cqpnkmncxd3".to_string());
+            let token_hash: String =
+                "db93ffb6ee9d5b924bc8f70e30c73ed809d210bca9b8aaab14eea609b55de166".to_string();
+            let token_addr: HumanAddr =
+                HumanAddr("secret1gdhgaeq9jvzwyjqc32j7cp00gd6cqpnkmncxd3".to_string());
 
             cosmos_messages.push(transfer_msg(
                 deps.api.human_address(&token.owner)?,

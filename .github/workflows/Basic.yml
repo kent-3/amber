@@ -61,11 +61,11 @@ jobs:
           command: fmt
           args: --all -- --check
 
-      - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+      # - name: Run cargo clippy
+      #   uses: actions-rs/cargo@v1
+      #   with:
+      #     command: clippy
+      #     args: -- -D warnings
 
       - name: Generate distributor schema
         uses: actions-rs/cargo@v1
@@ -78,3 +78,10 @@ jobs:
         with:
           command: schema
           args: --locked -p snip20-reference-impl
+
+      - name: Generate snip721 schema
+        uses: actions-rs/cargo@v1
+        with:
+          command: schema
+          args: --locked -p amburnft
+          

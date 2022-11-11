@@ -1,7 +1,7 @@
 [package]
-name = "snip721-reference-impl"
+name = "amburnft"
 version = "0.1.0"
-authors = ["bill wincer"]
+authors = ["bill wincer + kent"]
 edition = "2018"
 
 exclude = [
@@ -34,7 +34,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 [dependencies]
 cosmwasm-std = { version = "0.10", package = "secret-cosmwasm-std" }
 cosmwasm-storage = { version = "0.10", package = "secret-cosmwasm-storage" }
-secret-toolkit = { version = "0.3", default-features = false, features = ["storage", "serialization", "utils", "permit"] }
+secret-toolkit = { version = "0.3", default-features = false, features = ["storage", "serialization", "utils", "permit", "snip20"] }
 serde-json-wasm = "0.2.1"
 schemars = "0.7"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }

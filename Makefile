@@ -61,23 +61,33 @@ build-mainnet-reproducible:
 		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
 		enigmampc/secret-contract-optimizer:1.0.9
 	sha256sum snip20-reference-impl/contract.wasm.gz > snip20-reference-impl/hash.txt
+	docker run --rm -v "$$(pwd)/amburnft":/contract \
+		--mount type=volume,source="$$(basename "$$(pwd)/amburnft")_cache",target=/contract/target \
+		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+		enigmampc/secret-contract-optimizer:1.0.9
+	sha256sum amburnft/contract.wasm.gz > amburnft/hash.txt
 
 .PHONY: compress-wasm
 compress-wasm:
 	cp ./target/wasm32-unknown-unknown/release/merkle_distributor.wasm ./merkle-distributor/contract.wasm
 	cp ./target/wasm32-unknown-unknown/release/snip20_reference_impl.wasm ./snip20-reference-impl/contract.wasm
+	cp ./target/wasm32-unknown-unknown/release/amburnft.wasm ./amburnft/contract.wasm
 	@## The following line is not necessary, may work only on linux (extra size optimization)
 	wasm-opt -Os ./merkle-distributor/contract.wasm -o ./merkle-distributor/contract.wasm
 	wasm-opt -Os ./snip20-reference-impl/contract.wasm -o ./snip20-reference-impl/contract.wasm
+	wasm-opt -Os ./amburnft/contract.wasm -o ./amburnft/contract.wasm
 	cat ./merkle-distributor/contract.wasm | gzip -9 > ./merkle-distributor/contract.wasm.gz
 	cat ./snip20-reference-impl/contract.wasm | gzip -9 > ./snip20-reference-impl/contract.wasm.gz
+	cat ./amburnft/contract.wasm | gzip -9 > ./amburnft/contract.wasm.gz
 	rm ./merkle-distributor/contract.wasm
 	rm ./snip20-reference-impl/contract.wasm
+	rm ./amburnft/contract.wasm
 
 .PHONY: schema
 schema:
 	cargo run --example schema -p merkle-distributor && mv schema/ merkle-distributor/
 	cargo run --example schema -p snip20-reference-impl && mv schema/ snip20-reference-impl/
+	cargo run --example schema -p amburnft && mv schema/ amburnft/
 
 .PHONY: unit-test
 unit-tests:

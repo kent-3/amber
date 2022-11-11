@@ -1,7 +1,7 @@
 use cosmwasm_std::{
-    log, to_binary, Api, Binary, BlockInfo, CanonicalAddr, CosmosMsg, Env, Extern, HandleResponse,
-    HandleResult, HumanAddr, InitResponse, InitResult, Querier, QueryResult, ReadonlyStorage,
-    StdError, StdResult, Storage, WasmMsg,
+    from_binary, log, to_binary, Api, Binary, BlockInfo, CanonicalAddr, CosmosMsg, Env, Extern,
+    HandleResponse, HandleResult, HumanAddr, InitResponse, InitResult, Querier, QueryResult,
+    ReadonlyStorage, StdError, StdResult, Storage, Uint128, WasmMsg,
 };
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
 use primitive_types::U256;
@@ -11,6 +11,7 @@ use std::collections::HashSet;
 
 use secret_toolkit::{
     permit::{validate, Permit, RevokedPermits},
+    snip20::transfer_msg,
     utils::{pad_handle_result, pad_query_result},
 };
 
@@ -1213,9 +1214,38 @@ fn burn_nft<S: Storage, A: Api, Q: Querier>(
         token_ids: vec![token_id],
         memo,
     }];
-    burn_list(deps, &env.block, config, &sender_raw, burns)?;
+    burn_list(deps, &env.block, config, &sender_raw, burns.clone())?;
+
+    let mut cosmos_messages: Vec<CosmosMsg> = Vec::new();
+
+    for burn in burns.into_iter() {
+        for token_id in burn.token_ids.into_iter() {
+            let (token, _idx) = get_token(&deps.storage, &token_id, None)?;
+
+            let amount = from_binary::<Metadata>(&query_nft_info(&deps.storage, &token_id)?)?
+                .extension
+                .unwrap()
+                .description
+                .unwrap()
+                .parse::<u128>()
+                .map_err(|err| StdError::generic_err(err.to_string()))?;
+            let token_hash: String = "db93ffb6ee9d5b924bc8f70e30c73ed809d210bca9b8aaab14eea609b55de166".to_string();
+            let token_addr: HumanAddr = HumanAddr("secret1gdhgaeq9jvzwyjqc32j7cp00gd6cqpnkmncxd3".to_string());
+
+            cosmos_messages.push(transfer_msg(
+                deps.api.human_address(&token.owner)?,
+                Uint128(amount),
+                None,
+                None,
+                1,
+                token_hash,
+                token_addr,
+            )?)
+        }
+    }
+
     let res = HandleResponse {
-        messages: vec![],
+        messages: cosmos_messages,
         log: vec![],
         data: Some(to_binary(&HandleAnswer::BurnNft { status: Success })?),
     };

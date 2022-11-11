@@ -1,5 +1,5 @@
 [workspace]
-members = ["merkle-distributor", "snip20-reference-impl"]
+members = ["merkle-distributor", "snip20-reference-impl", "amburnft"]
 exclude = ["contract.wasm.gz", "hash.txt"]
 # exclude = ["snip20-reference-impl"]
 

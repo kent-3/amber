@@ -1,7 +1,6 @@
 [workspace]
 members = ["merkle-distributor", "snip20-reference-impl", "amburnft"]
 exclude = ["contract.wasm.gz", "hash.txt"]
-# exclude = ["snip20-reference-impl"]
 
 [profile.release]
 opt-level = 3

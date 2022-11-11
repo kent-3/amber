@@ -1,0 +1,1 @@
+40c6d6e7eb3449ce0a00560da3722bebc62dc8d6e679e756edea3c8944c89f46  amburnft/contract.wasm.gz

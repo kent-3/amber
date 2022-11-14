@@ -609,15 +609,48 @@ async function mintTx(
   snip721Address: string,
 ) {
   const handle_msg = {
-    mint_nft: {
-      token_id: "one",
-      owner: client.address,
-      public_metadata: {
-        extension: {
-          description: "50000"
+    "mint_nft": {
+      "token_id": "j7wwT",
+      "public_metadata": {
+        "extension": {
+          "media": [
+            {
+              "authentication": {
+                "key": "",
+                "user": ""
+              },
+              "file_type": "image",
+              "extension": "gif",
+              "url": "https://ipfs.io/ipfs/bafybeidpthti66dyzigh6h2uaj3korl2bzxdnmcedyajphuc3rrbek2otq/qUlbCfHlKV.gif"
+            }
+          ],
+          "attributes": [
+            {
+              "trait_type": "amount",
+              "value": "0.05"
+            }
+          ],
+          "protected_attributes": [],
+          "description": "50000",
+          "name": "airdrop"
         }
-      },   
-      transferable: true, 
+      },
+      "private_metadata": {
+        "extension": {
+          "media": [
+            {
+              "authentication": {
+                "user": "",
+                "key": "9AvVYZ/80Yk970QonWTHhvM4YpN0mANSUeEw0RNw3WY="
+              },
+              "extension": "gif",
+              "file_type": "image",
+              "url": "https://ipfs.io/ipfs/bafybeietvvjxi76r6swxbylg7vlc2z3ukefyuhkt7ffkimv5pfzj32xguy/PQbkPCustq.gif"
+            }
+          ],
+          "attributes": []
+        }
+      }
     }
   };
 

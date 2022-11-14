@@ -1,7 +1,7 @@
 use cosmwasm_std::{
-    from_binary, log, to_binary, Api, Binary, BlockInfo, CanonicalAddr, CosmosMsg, Env, Extern,
-    HandleResponse, HandleResult, HumanAddr, InitResponse, InitResult, Querier, QueryResult,
-    ReadonlyStorage, StdError, StdResult, Storage, Uint128, WasmMsg,
+    log, to_binary, Api, Binary, BlockInfo, CanonicalAddr, CosmosMsg, Env, Extern, HandleResponse,
+    HandleResult, HumanAddr, InitResponse, InitResult, Querier, QueryResult, ReadonlyStorage,
+    StdError, StdResult, Storage, Uint128, WasmMsg,
 };
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
 use primitive_types::U256;
@@ -1211,43 +1211,73 @@ fn burn_nft<S: Storage, A: Api, Q: Querier>(
     check_status(config.status, priority)?;
     let sender_raw = deps.api.canonical_address(&env.message.sender)?;
     let burns = vec![Burn {
-        token_ids: vec![token_id],
+        token_ids: vec![token_id.clone()],
         memo,
     }];
-    burn_list(deps, &env.block, config, &sender_raw, burns.clone())?;
 
-    let mut cosmos_messages: Vec<CosmosMsg> = Vec::new();
+    let (token, idx) = get_token(&deps.storage, &token_id, None)?;
 
-    for burn in burns.into_iter() {
-        for token_id in burn.token_ids.into_iter() {
-            let (token, _idx) = get_token(&deps.storage, &token_id, None)?;
+    let meta_store = ReadonlyPrefixedStorage::new(PREFIX_PUB_META, &deps.storage);
+    let meta: Metadata = load(&meta_store, &idx.to_le_bytes())?;
 
-            let amount = from_binary::<Metadata>(&query_nft_info(&deps.storage, &token_id)?)?
-                .extension
-                .unwrap()
-                .description
-                .unwrap()
-                .parse::<u128>()
-                .map_err(|err| StdError::generic_err(err.to_string()))?;
-            let token_hash: String =
-                "db93ffb6ee9d5b924bc8f70e30c73ed809d210bca9b8aaab14eea609b55de166".to_string();
-            let token_addr: HumanAddr =
-                HumanAddr("secret1gdhgaeq9jvzwyjqc32j7cp00gd6cqpnkmncxd3".to_string());
+    let amount = meta
+        .extension
+        .unwrap_or_default()
+        .description
+        .unwrap_or_default()
+        .parse::<u128>()
+        .map_err(|err| StdError::generic_err(err.to_string()))?;
+    let token_hash: String =
+        "db93ffb6ee9d5b924bc8f70e30c73ed809d210bca9b8aaab14eea609b55de166".to_string();
+    let token_addr: HumanAddr =
+        HumanAddr("secret1gdhgaeq9jvzwyjqc32j7cp00gd6cqpnkmncxd3".to_string());
 
-            cosmos_messages.push(transfer_msg(
-                deps.api.human_address(&token.owner)?,
-                Uint128(amount),
-                None,
-                None,
-                1,
-                token_hash,
-                token_addr,
-            )?)
-        }
-    }
+    let cosmos_message = transfer_msg(
+        deps.api.human_address(&token.owner)?,
+        Uint128(amount),
+        None,
+        None,
+        1,
+        token_hash,
+        token_addr,
+    )?;
 
+    // let mut cosmos_messages: Vec<CosmosMsg> = Vec::new();
+    // let meta_store = ReadonlyPrefixedStorage::new(PREFIX_PUB_META, &deps.storage);
+
+    // for burn in burns.clone().into_iter() {
+    //     for token_id in burn.token_ids.into_iter() {
+    //         let (token, idx) = get_token(&deps.storage, &token_id, None)?;
+
+    //         let meta: Metadata = load(&meta_store, &idx.to_le_bytes())?;
+
+    //         let amount = meta
+    //             .extension
+    //             .unwrap_or_default()
+    //             .description
+    //             .unwrap_or_default()
+    //             .parse::<u128>()
+    //             .map_err(|err| StdError::generic_err(err.to_string()))?;
+    //         let token_hash: String =
+    //             "db93ffb6ee9d5b924bc8f70e30c73ed809d210bca9b8aaab14eea609b55de166".to_string();
+    //         let token_addr: HumanAddr =
+    //             HumanAddr("secret1gdhgaeq9jvzwyjqc32j7cp00gd6cqpnkmncxd3".to_string());
+
+    //         cosmos_messages.push(transfer_msg(
+    //             deps.api.human_address(&token.owner)?,
+    //             Uint128(amount),
+    //             None,
+    //             None,
+    //             1,
+    //             token_hash,
+    //             token_addr,
+    //         )?)
+    //     }
+    // }
+
+    burn_list(deps, &env.block, config, &sender_raw, burns)?;
     let res = HandleResponse {
-        messages: cosmos_messages,
+        messages: vec![cosmos_message],
         log: vec![],
         data: Some(to_binary(&HandleAnswer::BurnNft { status: Success })?),
     };

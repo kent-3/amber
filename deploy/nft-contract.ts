@@ -49,7 +49,7 @@ const initializeContract = async (
       builder: "",
     },
     {
-      gasLimit: 4000000,
+      gasLimit: 5000000,
     }
   );
 
@@ -76,7 +76,7 @@ const initializeContract = async (
   
   ///////////////////////////////////
   const init_msg = {
-    name: "AmburNFT",
+    name: "AmburNFT 3.0",
     symbol: "ffffff",
     entropy: "L bro",
     config: {
@@ -84,7 +84,7 @@ const initializeContract = async (
       public_owner: false,
       enable_sealed_metadata: false,
       unwrapped_metadata_is_private: true,
-      minter_may_update_metadata: true,
+      minter_may_update_metadata: false,
       owner_may_update_metadata: false,
       enable_burn: true      
     },
@@ -176,16 +176,48 @@ async function mintTx(
   snip721Address: string,
 ) {
   const handle_msg = {
-    mint_nft: {
-      token_id: "one",
-      owner: client.address,
-      public_metadata: {
-        extension: {
-          description: "50000",
-          token_subtype: "badge"
+    "mint_nft": {
+      "token_id": "j7wwT",
+      "public_metadata": {
+        "extension": {
+          "media": [
+            {
+              "authentication": {
+                "key": "",
+                "user": ""
+              },
+              "file_type": "image",
+              "extension": "gif",
+              "url": "https://ipfs.io/ipfs/bafybeidpthti66dyzigh6h2uaj3korl2bzxdnmcedyajphuc3rrbek2otq/qUlbCfHlKV.gif"
+            }
+          ],
+          "attributes": [
+            {
+              "trait_type": "amount",
+              "value": "0.05"
+            }
+          ],
+          "protected_attributes": [],
+          "description": "50000",
+          "name": "airdrop"
         }
-      },   
-      transferable: true, 
+      },
+      "private_metadata": {
+        "extension": {
+          "media": [
+            {
+              "authentication": {
+                "user": "",
+                "key": "9AvVYZ/80Yk970QonWTHhvM4YpN0mANSUeEw0RNw3WY="
+              },
+              "extension": "gif",
+              "file_type": "image",
+              "url": "https://ipfs.io/ipfs/bafybeietvvjxi76r6swxbylg7vlc2z3ukefyuhkt7ffkimv5pfzj32xguy/PQbkPCustq.gif"
+            }
+          ],
+          "attributes": []
+        }
+      }
     }
   };
 
@@ -217,7 +249,48 @@ async function mintTx(
   console.log(`mintTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
 }
 
+async function burnTx(
+  client: SecretNetworkClient,
+  snip721Hash: string,
+  snip721Address: string,
+) {
+  const handle_msg = {
+    burn_nft: {
+      token_id: "j7wwT",
+    }
+  };
+
+  const tx = await client.tx.compute.executeContract(
+    {
+      sender: client.address,
+      contractAddress: snip721Address,
+      codeHash: snip721Hash,
+      msg: handle_msg,
+      sentFunds: [],
+    },
+    {
+      gasLimit: 500000,
+    }
+  );
+
+  if (tx.code !== 0) {
+    throw new Error(
+      `Failed with the following error:\n ${tx.rawLog}`
+    );
+  };
+
+  // const status = tx.arrayLog!.find(
+  //     (log) => log.type === "wasm" && log.key === "status"
+  //   )!.value;
+  
+  // assert(status, "success");
+
+  console.log(`burnTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
+}
+
 (async () => {
   const [client, contractHash, contractAddress] =
     await initializeAndUploadContract();
+    await mintTx(client, contractHash, contractAddress)
+    await burnTx(client, contractHash, contractAddress)
 })();

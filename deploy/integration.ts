@@ -14,36 +14,36 @@ var chainId: string = "secretdev-1";
 // chainId = process.env.CHAIN_ID!;
 
 
-interface Trait {
-  display_type?: string;
-  trait_type?: string;
-  value: string;
-  max_value?: string;
-}
-interface Authentication {
-  key?: string;
-  user?: string;
-}
-interface MediaFile {
-  file_type?: string;
-  extension?: string;
-  authentication?: Authentication;
-  url: string;
-}
-interface Extension {
-  image?: string;
-  image_data?: string;
-  external_url?: string;
-  description?: string;
-  name?: string;
-  attributes?: Trait[];
-  media?: MediaFile[];
-  protected_attributes: string[];
-}
-interface Metadata {
-  token_uri?: string;
-  extension?: Extension;
-}
+// interface Trait {
+//   display_type?: string;
+//   trait_type?: string;
+//   value: string;
+//   max_value?: string;
+// }
+// interface Authentication {
+//   key?: string;
+//   user?: string;
+// }
+// interface MediaFile {
+//   file_type?: string;
+//   extension?: string;
+//   authentication?: Authentication;
+//   url: string;
+// }
+// interface Extension {
+//   image?: string;
+//   image_data?: string;
+//   external_url?: string;
+//   description?: string;
+//   name?: string;
+//   attributes?: Trait[];
+//   media?: MediaFile[];
+//   protected_attributes: string[];
+// }
+// interface Metadata {
+//   token_uri?: string;
+//   extension?: Extension;
+// }
 
 
 // Returns a client with which we can interact with secret network
@@ -603,14 +603,97 @@ async function query_unclaimed(
   return response.Ok
 }
 
-async function test_init_tx(
+async function mintTx(
+  client: SecretNetworkClient,
+  snip721Hash: string,
+  snip721Address: string,
+) {
+  const handle_msg = {
+    mint_nft: {
+      token_id: "one",
+      owner: client.address,
+      public_metadata: {
+        extension: {
+          description: "50000"
+        }
+      },   
+      transferable: true, 
+    }
+  };
+
+  const tx = await client.tx.compute.executeContract(
+    {
+      sender: client.address,
+      contractAddress: snip721Address,
+      codeHash: snip721Hash,
+      msg: handle_msg,
+      sentFunds: [],
+    },
+    {
+      gasLimit: 500000,
+    }
+  );
+
+  if (tx.code !== 0) {
+    throw new Error(
+      `Failed with the following error:\n ${tx.rawLog}`
+    );
+  };
+
+  // const status = tx.arrayLog!.find(
+  //     (log) => log.type === "wasm" && log.key === "status"
+  //   )!.value;
+
+  // assert(status, "success");
+
+  console.log(`mintTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
+}
+
+async function burnTx(
+  client: SecretNetworkClient,
+  snip721Hash: string,
+  snip721Address: string,
+) {
+  const handle_msg = {
+    burn_nft: {
+      token_id: "one",
+    }
+  };
+
+  const tx = await client.tx.compute.executeContract(
+    {
+      sender: client.address,
+      contractAddress: snip721Address,
+      codeHash: snip721Hash,
+      msg: handle_msg,
+      sentFunds: [],
+    },
+    {
+      gasLimit: 500000,
+    }
+  );
+
+  if (tx.code !== 0) {
+    throw new Error(
+      `Failed with the following error:\n ${tx.rawLog}`
+    );
+  };
+
+  // const status = tx.arrayLog!.find(
+  //     (log) => log.type === "wasm" && log.key === "status"
+  //   )!.value;
+  
+  // assert(status, "success");
+
+  console.log(`burnTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
+}
+
+async function test_distributor_stuff(
   client: SecretNetworkClient,
   snip20Hash: string,
   snip20Address: string,
   distributorHash: string,
   distributorAddress: string,
-  snip721Hash: string,
-  snip721Address: string,
 ) {
   await sendTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
   const query1 = await query_unclaimed(client, distributorHash, distributorAddress);
@@ -640,7 +723,8 @@ async function test_nft_stuff(
   snip721Address: string,
 ) {
   await fund721Tx(client, snip20Hash, snip20Address, distributorHash, distributorAddress, snip721Hash, snip721Address)
-
+  await mintTx(client, snip721Hash, snip721Address)
+  await burnTx(client, snip721Hash, snip721Address)
 }
 
 async function runTestFunction(
@@ -671,7 +755,7 @@ async function runTestFunction(
     await initializeAndUploadContract();
 
   await runTestFunction(
-    test_init_tx,
+    test_distributor_stuff,
     client,
     snip20Hash, 
     snip20Address, 

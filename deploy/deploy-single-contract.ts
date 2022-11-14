@@ -1,0 +1,223 @@
+import axios from "axios";
+import { Wallet, SecretNetworkClient } from "secretjs";
+import fs from "fs";
+import 'dotenv/config'
+
+var mnemonic: string;
+var endpoint: string = "http://localhost:9091";
+var chainId: string = "secretdev-1";
+
+// uncomment when using .env file
+mnemonic = process.env.MNEMONIC!;
+endpoint = process.env.GRPC_WEB_URL!;
+chainId = process.env.CHAIN_ID!;
+
+
+// Returns a client with which we can interact with secret network
+const initializeClient = async (endpoint: string, chainId: string) => {
+  let wallet: Wallet;
+  if (mnemonic) {
+    wallet = new Wallet(mnemonic);
+  } else {
+    wallet = new Wallet();
+  }
+  const accAddress = wallet.address;
+  const client = await SecretNetworkClient.create({
+    // Create a client to interact with the network
+    grpcWebUrl: endpoint,
+    chainId: chainId,
+    wallet: wallet,
+    walletAddress: accAddress,
+  });
+
+  console.log(`\nInitialized client with wallet address: ${accAddress}`);
+  return client;
+};
+
+const initializeContract = async (
+  client: SecretNetworkClient,
+  contractPath: string,
+) => {
+  const wasmCode = fs.readFileSync(contractPath);
+  console.log("\nUploading contract");
+
+  const uploadReceipt = await client.tx.compute.storeCode(
+    {
+      wasmByteCode: wasmCode,
+      sender: client.address,
+      source: "",
+      builder: "",
+    },
+    {
+      gasLimit: 4000000,
+    }
+  );
+
+  if (uploadReceipt.code !== 0) {
+    console.log(
+      `Failed to get code id: ${JSON.stringify(uploadReceipt.rawLog)}`
+    );
+    throw new Error(`Failed to upload contract`);
+  }
+
+  const codeIdKv = uploadReceipt.jsonLog![0].events[0].attributes.find(
+    (a: any) => {
+      return a.key === "code_id";
+    }
+  );
+
+  console.log(`Upload used \x1b[33m${uploadReceipt.gasUsed}\x1b[0m gas\n`);
+
+  const codeId = Number(codeIdKv!.value);
+  console.log("Contract codeId: ", codeId);
+
+  const contractCodeHash = await client.query.compute.codeHash(codeId);
+  console.log(`Contract hash: ${contractCodeHash}`);
+  
+  ///////////////////////////////////
+  const init_msg = {
+    name: "AmburNFT",
+    symbol: "ffffff",
+    entropy: "L bro",
+    config: {
+      public_token_supply: true,
+      public_owner: false,
+      enable_sealed_metadata: false,
+      unwrapped_metadata_is_private: true,
+      minter_may_update_metadata: true,
+      owner_may_update_metadata: false,
+      enable_burn: true      
+    },
+  };
+  ///////////////////////////////////
+
+  const contract = await client.tx.compute.instantiateContract(
+    {
+      sender: client.address,
+      codeId,
+      initMsg: init_msg,
+      codeHash: contractCodeHash,
+      label: "My Contract " + Math.ceil(Math.random() * 10000), // The label should be unique for every contract, add random string in order to maintain uniqueness
+    },
+    {
+      gasLimit: 300000,
+    }
+  );
+
+  if (contract.code !== 0) {
+    throw new Error(
+      `Failed to instantiate the contract with the following error ${contract.rawLog}`
+    );
+  }
+
+  const contractAddress = contract.arrayLog!.find(
+    (log) => log.type === "message" && log.key === "contract_address"
+  )!.value;
+
+  console.log(`Contract address: ${contractAddress}\n`);
+
+  console.log(`Init used \x1b[33m${contract.gasUsed}\x1b[0m gas`);
+
+  var contractInfo: [string, string] = [contractCodeHash, contractAddress];
+  return contractInfo;
+};
+
+const getFromFaucet = async (address: string) => {
+  await axios.get(`http://localhost:5000/faucet?address=${address}`);
+};
+
+async function getScrtBalance(userCli: SecretNetworkClient): Promise<string> {
+  let balanceResponse = await userCli.query.bank.balance({
+    address: userCli.address,
+    denom: "uscrt",
+  });
+  return balanceResponse.balance!.amount;
+}
+
+async function fillUpFromFaucet(
+  client: SecretNetworkClient,
+  targetBalance: Number
+) {
+  let balance = await getScrtBalance(client);
+  while (Number(balance) < targetBalance) {
+    try {
+      await getFromFaucet(client.address);
+    } catch (e) {
+      console.error(`\x1b[2mfailed to get tokens from faucet: ${e}\x1b[0m`);
+    }
+    balance = await getScrtBalance(client);
+  }
+  console.error(`got tokens from faucet: ${balance}`);
+}
+
+// Initialization procedure
+async function initializeAndUploadContract() {
+
+  const client = await initializeClient(endpoint, chainId);
+
+  if (chainId == "secretdev-1") {await fillUpFromFaucet(client, 100_000_000)};
+  
+  const [contractHash, contractAddress] = await initializeContract(
+    client,
+    "./amburnft/contract.wasm.gz",
+  );
+
+  var clientInfo: [SecretNetworkClient, string, string] = [
+    client,
+    contractHash,
+    contractAddress,
+  ];
+  return clientInfo;
+}
+
+async function mintTx(
+  client: SecretNetworkClient,
+  snip721Hash: string,
+  snip721Address: string,
+) {
+  const handle_msg = {
+    mint_nft: {
+      token_id: "one",
+      owner: client.address,
+      public_metadata: {
+        extension: {
+          description: "50000",
+          token_subtype: "badge"
+        }
+      },   
+      transferable: true, 
+    }
+  };
+
+  const tx = await client.tx.compute.executeContract(
+    {
+      sender: client.address,
+      contractAddress: snip721Address,
+      codeHash: snip721Hash,
+      msg: handle_msg,
+      sentFunds: [],
+    },
+    {
+      gasLimit: 500000,
+    }
+  );
+
+  if (tx.code !== 0) {
+    throw new Error(
+      `Failed with the following error:\n ${tx.rawLog}`
+    );
+  };
+
+  // const status = tx.arrayLog!.find(
+  //     (log) => log.type === "wasm" && log.key === "status"
+  //   )!.value;
+
+  // assert(status, "success");
+
+  console.log(`mintTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
+}
+
+(async () => {
+  const [client, contractHash, contractAddress] =
+    await initializeAndUploadContract();
+})();

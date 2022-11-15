@@ -689,7 +689,7 @@ async function burnTx(
 ) {
   const handle_msg = {
     burn_nft: {
-      token_id: "one",
+      token_id: "j7wwT",
     }
   };
 

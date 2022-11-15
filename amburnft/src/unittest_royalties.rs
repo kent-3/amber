@@ -33,6 +33,8 @@ mod tests {
             royalty_info,
             config: None,
             post_init_callback: None,
+            snip20_hash: "lalalalala".to_string(),
+            snip20_addr: HumanAddr("fafafafafa".to_string()),
         };
 
         (init(&mut deps, env, init_msg), deps)
@@ -82,6 +84,8 @@ mod tests {
             royalty_info,
             config: Some(init_config),
             post_init_callback: None,
+            snip20_hash: "lalalalala".to_string(),
+            snip20_addr: HumanAddr("fafafafafa".to_string()),
         };
 
         (init(&mut deps, env, init_msg), deps)
@@ -287,6 +291,8 @@ mod tests {
             royalty_info: None,
             config: None,
             post_init_callback,
+            snip20_hash: "lalalalala".to_string(),
+            snip20_addr: HumanAddr("fafafafafa".to_string()),
         };
 
         let init_response = init(&mut deps, env, init_msg).unwrap();

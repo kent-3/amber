@@ -27,6 +27,8 @@ pub const PRNG_SEED_KEY: &[u8] = b"prngseed";
 pub const CREATOR_KEY: &[u8] = b"creator";
 /// storage key for the default RoyaltyInfo to use if none is supplied when minting
 pub const DEFAULT_ROYALTY_KEY: &[u8] = b"defaultroy";
+/// storage key for the snip20 info
+pub const SNIP_20_KEY: &[u8] = b"snip20";
 /// prefix for storage that maps ids to indices
 pub const PREFIX_MAP_TO_INDEX: &[u8] = b"map2idx";
 /// prefix for storage that maps indices to ids

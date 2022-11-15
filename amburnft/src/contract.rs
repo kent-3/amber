@@ -12,7 +12,7 @@ use std::collections::HashSet;
 use secret_toolkit::{
     permit::{validate, Permit, RevokedPermits},
     snip20::transfer_msg,
-    utils::{pad_handle_result, pad_query_result},
+    utils::{pad_handle_result, pad_query_result, types::Contract},
 };
 
 use crate::expiration::Expiration;
@@ -33,6 +33,7 @@ use crate::state::{
     PREFIX_ALL_PERMISSIONS, PREFIX_AUTHLIST, PREFIX_INFOS, PREFIX_MAP_TO_ID, PREFIX_MAP_TO_INDEX,
     PREFIX_MINT_RUN, PREFIX_MINT_RUN_NUM, PREFIX_OWNER_PRIV, PREFIX_PRIV_META, PREFIX_PUB_META,
     PREFIX_RECEIVERS, PREFIX_REVOKED_PERMITS, PREFIX_ROYALTY_INFO, PREFIX_VIEW_KEY, PRNG_SEED_KEY,
+    SNIP_20_KEY,
 };
 use crate::token::{Metadata, Token};
 use crate::viewing_key::{ViewingKey, VIEWING_KEY_SIZE};
@@ -89,6 +90,12 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         owner_may_update_metadata: init_config.owner_may_update_metadata.unwrap_or(false),
         burn_is_enabled: init_config.enable_burn.unwrap_or(false),
     };
+
+    let snip20_info = Contract {
+        address: msg.snip20_addr,
+        hash: msg.snip20_hash,
+    };
+    save(&mut deps.storage, SNIP_20_KEY, &snip20_info)?;
 
     let minters = vec![admin_raw];
     save(&mut deps.storage, CONFIG_KEY, &config)?;

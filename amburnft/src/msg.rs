@@ -31,6 +31,10 @@ pub struct InitMsg {
     /// contract that instantiated it, but it could be used to execute any
     /// contract
     pub post_init_callback: Option<PostInitCallback>,
+    /// contract code hash for the associated SNIP20 contract
+    pub snip20_hash: String,
+    /// contract address for the associated SNIP20 contract
+    pub snip20_addr: HumanAddr,
 }
 
 /// This type represents optional configuration values.

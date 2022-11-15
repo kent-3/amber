@@ -8,9 +8,9 @@ var endpoint: string = "http://localhost:9091";
 var chainId: string = "secretdev-1";
 
 // uncomment when using .env file
-mnemonic = process.env.MNEMONIC!;
-endpoint = process.env.GRPC_WEB_URL!;
-chainId = process.env.CHAIN_ID!;
+// mnemonic = process.env.MNEMONIC!;
+// endpoint = process.env.GRPC_WEB_URL!;
+// chainId = process.env.CHAIN_ID!;
 
 
 // Returns a client with which we can interact with secret network

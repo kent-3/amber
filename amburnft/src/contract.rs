@@ -1237,7 +1237,6 @@ fn burn_nft<S: Storage, A: Api, Q: Querier>(
         .parse::<u128>()
         .map_err(|err| StdError::generic_err(err.to_string()))?;
 
-
     let cosmos_message = transfer_msg(
         deps.api.human_address(&token.owner)?,
         Uint128(amount),

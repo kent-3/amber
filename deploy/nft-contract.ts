@@ -88,6 +88,8 @@ const initializeContract = async (
       owner_may_update_metadata: false,
       enable_burn: true      
     },
+    snip20_hash: "db93ffb6ee9d5b924bc8f70e30c73ed809d210bca9b8aaab14eea609b55de166",
+    snip20_addr: "secret1gymqy8w5mjhrgk62a5myrrh2ea9xgpvecryn7a",
   };
   ///////////////////////////////////
 
@@ -199,7 +201,9 @@ async function mintTx(
           ],
           "protected_attributes": [],
           "description": "50000",
-          "name": "airdrop"
+          "name": "airdrop",
+          "token_subtype": "badge",
+
         }
       },
       "private_metadata": {
@@ -292,5 +296,5 @@ async function burnTx(
   const [client, contractHash, contractAddress] =
     await initializeAndUploadContract();
     await mintTx(client, contractHash, contractAddress)
-    await burnTx(client, contractHash, contractAddress)
+    // await burnTx(client, contractHash, contractAddress)
 })();

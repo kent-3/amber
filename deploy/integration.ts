@@ -638,7 +638,8 @@ async function mintTx(
           ],
           "protected_attributes": [],
           "description": "50000",
-          "name": "airdrop"
+          "name": "airdrop",
+          "token_subtype": "badge",
         }
       },
       "private_metadata": {
@@ -739,6 +740,7 @@ async function test_distributor_stuff(
   assert(query1, "5110600000")
   await claimTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
   const query2 = await query_unclaimed(client, distributorHash, distributorAddress);
+  console.log(query2)
   assert(query2, "5110600000")
   if (chainId == "secretdev-1") {
     const differentClient = await initializeClient(endpoint, chainId);

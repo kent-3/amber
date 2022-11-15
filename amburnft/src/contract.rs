@@ -1222,11 +1222,13 @@ fn burn_nft<S: Storage, A: Api, Q: Querier>(
         memo,
     }];
 
-    let (token, idx) = get_token(&deps.storage, &token_id, None)?;
+    let snip20: Contract = load(&deps.storage, SNIP_20_KEY)?;
+    let token_hash = snip20.hash;
+    let token_addr = snip20.address;
 
+    let (token, idx) = get_token(&deps.storage, &token_id, None)?;
     let meta_store = ReadonlyPrefixedStorage::new(PREFIX_PUB_META, &deps.storage);
     let meta: Metadata = load(&meta_store, &idx.to_le_bytes())?;
-
     let amount = meta
         .extension
         .unwrap_or_default()
@@ -1234,10 +1236,7 @@ fn burn_nft<S: Storage, A: Api, Q: Querier>(
         .unwrap_or_default()
         .parse::<u128>()
         .map_err(|err| StdError::generic_err(err.to_string()))?;
-    let token_hash: String =
-        "db93ffb6ee9d5b924bc8f70e30c73ed809d210bca9b8aaab14eea609b55de166".to_string();
-    let token_addr: HumanAddr =
-        HumanAddr("secret1gdhgaeq9jvzwyjqc32j7cp00gd6cqpnkmncxd3".to_string());
+
 
     let cosmos_message = transfer_msg(
         deps.api.human_address(&token.owner)?,

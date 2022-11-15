@@ -151,6 +151,8 @@ const initializeSnip20 = async (
 const initializeSnip721 = async (
   client: SecretNetworkClient,
   contractPath: string,
+  snip20Hash: string,
+  snip20Address: string,
 ) => {
   const wasmCode = fs.readFileSync(contractPath);
   console.log("\nUploading contract");
@@ -201,6 +203,8 @@ const initializeSnip721 = async (
       owner_may_update_metadata: false,
       enable_burn: true      
     },
+    snip20_hash: snip20Hash,
+    snip20_addr: snip20Address,
   };
   const contract = await client.tx.compute.instantiateContract(
     {
@@ -362,6 +366,8 @@ async function initializeAndUploadContract() {
   const [snip721Hash, snip721Address] = await initializeSnip721(
     client,
     "./amburnft/contract.wasm.gz",
+    snip20Hash,
+    snip20Address
   );
 
   var clientInfo: [SecretNetworkClient, string, string, string, string, string, string] = [

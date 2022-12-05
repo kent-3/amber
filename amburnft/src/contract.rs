@@ -35,7 +35,7 @@ use crate::state::{
     PREFIX_RECEIVERS, PREFIX_REVOKED_PERMITS, PREFIX_ROYALTY_INFO, PREFIX_VIEW_KEY, PRNG_SEED_KEY,
     SNIP_20_KEY,
 };
-use crate::token::{Metadata, Token};
+use crate::token::{Metadata, Token, Trait};
 use crate::viewing_key::{ViewingKey, VIEWING_KEY_SIZE};
 
 /// pad handle responses and log attributes to blocks of 256 bytes to prevent leaking info based on
@@ -1222,67 +1222,82 @@ fn burn_nft<S: Storage, A: Api, Q: Querier>(
         memo,
     }];
 
+    // magic happens here
+
     let snip20: Contract = load(&deps.storage, SNIP_20_KEY)?;
     let token_hash = snip20.hash;
     let token_addr = snip20.address;
-
-    let (token, idx) = get_token(&deps.storage, &token_id, None)?;
-    let meta_store = ReadonlyPrefixedStorage::new(PREFIX_PUB_META, &deps.storage);
-    let meta: Metadata = load(&meta_store, &idx.to_le_bytes())?;
-    let amount = meta
-        .extension
-        .unwrap_or_default()
-        .description
-        .unwrap_or_default()
-        .parse::<u128>()
-        .map_err(|err| StdError::generic_err(err.to_string()))?;
-
-    let cosmos_message = transfer_msg(
-        deps.api.human_address(&token.owner)?,
-        Uint128(amount),
-        None,
-        None,
-        1,
-        token_hash,
-        token_addr,
-    )?;
-
-    // let mut cosmos_messages: Vec<CosmosMsg> = Vec::new();
+// working part
+    // let (token, idx) = get_token(&deps.storage, &token_id, None)?;
     // let meta_store = ReadonlyPrefixedStorage::new(PREFIX_PUB_META, &deps.storage);
+    // let meta: Metadata = load(&meta_store, &idx.to_le_bytes())?;
+    // let amount = meta
+    //     .extension
+    //     .unwrap_or_default()
+    //     .attributes
+    //     .unwrap_or_default()
+    //     .into_iter()
+    //     .find(|x| x.trait_type.as_ref().unwrap_or(&"foobar".to_string()) == "uAMBER")
+    //     .unwrap_or_else(|| Trait {
+    //         display_type: None,
+    //         trait_type: Some("uAMBER".to_string()),
+    //         value: "0".to_string(),
+    //         max_value: None,
+    //     })
+    //     .value
+    //     .parse::<u128>()
+    //     .map_err(|err| StdError::generic_err(err.to_string()))?;
 
-    // for burn in burns.clone().into_iter() {
-    //     for token_id in burn.token_ids.into_iter() {
-    //         let (token, idx) = get_token(&deps.storage, &token_id, None)?;
+    // let cosmos_message = transfer_msg(
+    //     deps.api.human_address(&token.owner)?,
+    //     Uint128(amount),
+    //     None,
+    //     None,
+    //     1,
+    //     token_hash,
+    //     token_addr,
+    // )?;
+// working part
 
-    //         let meta: Metadata = load(&meta_store, &idx.to_le_bytes())?;
+    let mut cosmos_messages: Vec<CosmosMsg> = Vec::new();
+    let meta_store = ReadonlyPrefixedStorage::new(PREFIX_PUB_META, &deps.storage);
 
-    //         let amount = meta
-    //             .extension
-    //             .unwrap_or_default()
-    //             .description
-    //             .unwrap_or_default()
-    //             .parse::<u128>()
-    //             .map_err(|err| StdError::generic_err(err.to_string()))?;
-    //         let token_hash: String =
-    //             "db93ffb6ee9d5b924bc8f70e30c73ed809d210bca9b8aaab14eea609b55de166".to_string();
-    //         let token_addr: HumanAddr =
-    //             HumanAddr("secret1gdhgaeq9jvzwyjqc32j7cp00gd6cqpnkmncxd3".to_string());
+    for burn in burns.clone().into_iter() {
+        for token_id in burn.token_ids.into_iter() {
+            let (token, idx) = get_token(&deps.storage, &token_id, None)?;
+            let meta: Metadata = load(&meta_store, &idx.to_le_bytes())?;
+            let amount = meta
+                .extension
+                .unwrap_or_default()
+                .attributes
+                .unwrap_or_default()
+                .into_iter()
+                .find(|x| x.trait_type.as_ref().unwrap_or(&"foobar".to_string()) == "uAMBER")
+                .unwrap_or_else(|| Trait {
+                    display_type: None,
+                    trait_type: Some("uAMBER".to_string()),
+                    value: "0".to_string(),
+                    max_value: None,
+                })
+                .value
+                .parse::<u128>()
+                .map_err(|err| StdError::generic_err(err.to_string()))?;
 
-    //         cosmos_messages.push(transfer_msg(
-    //             deps.api.human_address(&token.owner)?,
-    //             Uint128(amount),
-    //             None,
-    //             None,
-    //             1,
-    //             token_hash,
-    //             token_addr,
-    //         )?)
-    //     }
-    // }
+            cosmos_messages.push(transfer_msg(
+                deps.api.human_address(&token.owner)?,
+                Uint128(amount),
+                None,
+                None,
+                1,
+                token_hash.clone(),
+                token_addr.clone(),
+            )?)
+        }
+    }
 
     burn_list(deps, &env.block, config, &sender_raw, burns)?;
     let res = HandleResponse {
-        messages: vec![cosmos_message],
+        messages: cosmos_messages,
         log: vec![],
         data: Some(to_binary(&HandleAnswer::BurnNft { status: Success })?),
     };

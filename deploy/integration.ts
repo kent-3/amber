@@ -108,9 +108,9 @@ const initializeSnip20 = async (
   console.log(`Contract hash: ${contractCodeHash}`);
 
   const init_msg = { 
-    name: "secret-secret",
+    name: "test amber",
     admin: client.address,
-    symbol: "SSCRT",
+    symbol: "AMBER",
     decimals: 6,
     initial_balances:[{"address": client.address, "amount":"8888000000"}],
     prng_seed: Buffer.from("amber rocks").toString('base64'),
@@ -430,7 +430,7 @@ async function fund721Tx(
   const handle_msg = {
     send:{
         recipient: snip721Address,
-        amount: "44000000"
+        amount: "10000000"
     }
   };
 
@@ -626,20 +626,20 @@ async function mintTx(
                 "user": ""
               },
               "file_type": "image",
-              "extension": "gif",
-              "url": "https://ipfs.io/ipfs/bafybeidpthti66dyzigh6h2uaj3korl2bzxdnmcedyajphuc3rrbek2otq/qUlbCfHlKV.gif"
+              "extension": "png",
+              "url": "https://ipfs.io/ipfs/QmX2kpUR84My18qc8kdJjwG23dQSLiPcwY36L6awkzXqjV"
             }
           ],
           "attributes": [
             {
-              "trait_type": "amount",
-              "value": "0.05"
+              "trait_type": "uAMBER",
+              "value": "200000"
             }
           ],
           "protected_attributes": [],
-          "description": "50000",
-          "name": "airdrop",
-          "token_subtype": "badge",
+          "description": "burn me",
+          "name": "Amber Giveaway",
+          "token_subtype": "badge"
         }
       },
       "private_metadata": {
@@ -648,11 +648,11 @@ async function mintTx(
             {
               "authentication": {
                 "user": "",
-                "key": "9AvVYZ/80Yk970QonWTHhvM4YpN0mANSUeEw0RNw3WY="
+                "key": "4LOinw0tkKD6Seq9uGkv/TRsLZ9JKgKqYHn87PcFwLQ="
               },
-              "extension": "gif",
+              "extension": "png",
               "file_type": "image",
-              "url": "https://ipfs.io/ipfs/bafybeietvvjxi76r6swxbylg7vlc2z3ukefyuhkt7ffkimv5pfzj32xguy/PQbkPCustq.gif"
+              "url": "https://ipfs.io/ipfs/QmdUhYT7ZgojADe6SsdKBuFd8sTue2NFD5f2FKQBbnRVMd"
             }
           ],
           "attributes": []
@@ -724,8 +724,8 @@ async function burnTx(
   //   )!.value;
   
   // assert(status, "success");
-
   console.log(`burnTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
+  console.log(tx.arrayLog)
 }
 
 async function test_distributor_stuff(

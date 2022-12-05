@@ -1,1 +1,1 @@
-5f2a06e9f5a5ed14b69c0edecd11365baf49a385eb2f37283fdedd40a1be22f5  amburnft/contract.wasm.gz
+c6f37dd2c8762806ec9cf82a4784cffa12d08366b16ce6f281717387d492673f  contract.wasm.gz

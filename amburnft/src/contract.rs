@@ -1186,9 +1186,54 @@ pub fn batch_burn_nft<S: Storage, A: Api, Q: Querier>(
 ) -> HandleResult {
     check_status(config.status, priority)?;
     let sender_raw = deps.api.canonical_address(&env.message.sender)?;
+
+    // magic happens here
+
+    let snip20: Contract = load(&deps.storage, SNIP_20_KEY)?;
+    let token_hash = snip20.hash;
+    let token_addr = snip20.address;
+
+    let mut cosmos_messages: Vec<CosmosMsg> = Vec::new();
+    let meta_store = ReadonlyPrefixedStorage::new(PREFIX_PUB_META, &deps.storage);
+
+    for burn in burns.clone().into_iter() {
+        for token_id in burn.token_ids.into_iter() {
+            let (token, idx) = get_token(&deps.storage, &token_id, None)?;
+            let meta: Metadata = load(&meta_store, &idx.to_le_bytes())?;
+            let amount = meta
+                .extension
+                .unwrap_or_default()
+                .attributes
+                .unwrap_or_default()
+                .into_iter()
+                .find(|x| x.trait_type.as_ref().unwrap_or(&"foobar".to_string()) == "Burn Value")
+                .unwrap_or_else(|| Trait {
+                    display_type: None,
+                    trait_type: Some("Burn Value".to_string()),
+                    value: "0".to_string(),
+                    max_value: None,
+                })
+                .value
+                .parse::<u128>()
+                .map_err(|err| StdError::generic_err(err.to_string()))?;
+
+            cosmos_messages.push(transfer_msg(
+                deps.api.human_address(&token.owner)?,
+                Uint128(amount),
+                None,
+                None,
+                1,
+                token_hash.clone(),
+                token_addr.clone(),
+            )?)
+        }
+    }
+
+    // magic ends here
+
     burn_list(deps, &env.block, config, &sender_raw, burns)?;
     let res = HandleResponse {
-        messages: vec![],
+        messages: cosmos_messages, // little bit of magic here too
         log: vec![],
         data: Some(to_binary(&HandleAnswer::BatchBurnNft { status: Success })?),
     };
@@ -1227,37 +1272,6 @@ fn burn_nft<S: Storage, A: Api, Q: Querier>(
     let snip20: Contract = load(&deps.storage, SNIP_20_KEY)?;
     let token_hash = snip20.hash;
     let token_addr = snip20.address;
-// working part
-    // let (token, idx) = get_token(&deps.storage, &token_id, None)?;
-    // let meta_store = ReadonlyPrefixedStorage::new(PREFIX_PUB_META, &deps.storage);
-    // let meta: Metadata = load(&meta_store, &idx.to_le_bytes())?;
-    // let amount = meta
-    //     .extension
-    //     .unwrap_or_default()
-    //     .attributes
-    //     .unwrap_or_default()
-    //     .into_iter()
-    //     .find(|x| x.trait_type.as_ref().unwrap_or(&"foobar".to_string()) == "uAMBER")
-    //     .unwrap_or_else(|| Trait {
-    //         display_type: None,
-    //         trait_type: Some("uAMBER".to_string()),
-    //         value: "0".to_string(),
-    //         max_value: None,
-    //     })
-    //     .value
-    //     .parse::<u128>()
-    //     .map_err(|err| StdError::generic_err(err.to_string()))?;
-
-    // let cosmos_message = transfer_msg(
-    //     deps.api.human_address(&token.owner)?,
-    //     Uint128(amount),
-    //     None,
-    //     None,
-    //     1,
-    //     token_hash,
-    //     token_addr,
-    // )?;
-// working part
 
     let mut cosmos_messages: Vec<CosmosMsg> = Vec::new();
     let meta_store = ReadonlyPrefixedStorage::new(PREFIX_PUB_META, &deps.storage);
@@ -1272,10 +1286,10 @@ fn burn_nft<S: Storage, A: Api, Q: Querier>(
                 .attributes
                 .unwrap_or_default()
                 .into_iter()
-                .find(|x| x.trait_type.as_ref().unwrap_or(&"foobar".to_string()) == "uAMBER")
+                .find(|x| x.trait_type.as_ref().unwrap_or(&"foobar".to_string()) == "Burn Value")
                 .unwrap_or_else(|| Trait {
                     display_type: None,
-                    trait_type: Some("uAMBER".to_string()),
+                    trait_type: Some("Burn Value".to_string()),
                     value: "0".to_string(),
                     max_value: None,
                 })
@@ -1295,9 +1309,11 @@ fn burn_nft<S: Storage, A: Api, Q: Querier>(
         }
     }
 
+    // magic ends here
+
     burn_list(deps, &env.block, config, &sender_raw, burns)?;
     let res = HandleResponse {
-        messages: cosmos_messages,
+        messages: cosmos_messages, // little bit of magic here too
         log: vec![],
         data: Some(to_binary(&HandleAnswer::BurnNft { status: Success })?),
     };

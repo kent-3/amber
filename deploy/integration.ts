@@ -725,7 +725,6 @@ async function burnTx(
   
   // assert(status, "success");
   console.log(`burnTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
-  console.log(tx.arrayLog)
 }
 
 async function test_distributor_stuff(

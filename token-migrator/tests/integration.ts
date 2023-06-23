@@ -3,27 +3,26 @@ import { Wallet, SecretNetworkClient } from "secretjs";
 import fs from "fs";
 import assert from "assert";
 import "dotenv/config";
-import * as contracts from "../../messages/contracts.json"
+import * as contracts from "../../messages/contracts.json";
 
 var mnemonic: string;
-var endpoint: string = "http://localhost:9091";
+var endpoint: string = "http://localhost:1317";
 var chainId: string = "secretdev-1";
 
 // uncomment when using .env file
 // mnemonic = process.env.MNEMONIC!;
-// endpoint = process.env.GRPC_WEB_URL!;
+// endpoint = process.env.LCD_URL!;
 // chainId = process.env.CHAIN_ID!;
 
 interface ContractInfo {
-		contract_address: string,
-		code_hash: string,
-		code_id: number,
-		creator: string,
-		label: string,
+  contract_address: string;
+  code_hash: string;
+  code_id: number;
+  creator: string;
+  label: string;
 }
 
-const oldAmber: ContractInfo = contracts.original_amber;
-
+const oldAmber: ContractInfo = contracts.original_amber_testnet;
 
 // Returns a client with which we can interact with secret network
 const initializeClient = async (endpoint: string, chainId: string) => {
@@ -57,9 +56,10 @@ const initializeSnip20 = async (
     {
       wasm_byte_code: wasmCode,
       sender: client.address,
-      source:
-        "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
-      builder: "enigmampc/secret-contract-optimizer:1.0.9",
+      source: "",
+      // "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
+      builder: "",
+      // "enigmampc/secret-contract-optimizer:1.0.9",
     },
     {
       gasLimit: 5000000,
@@ -89,9 +89,9 @@ const initializeSnip20 = async (
   console.log(`Contract hash: ${contractCodeHash}`);
 
   const init_msg = {
-    name: "secret-secret",
+    name: "Amber",
     admin: client.address,
-    symbol: "SSCRT",
+    symbol: "AMBER",
     decimals: 6,
     initial_balances: [{ address: client.address, amount: "8888000000" }],
     prng_seed: Buffer.from("amber rocks").toString("base64"),
@@ -104,10 +104,10 @@ const initializeSnip20 = async (
       code_id: codeId.toString(),
       init_msg: init_msg,
       code_hash: contractCodeHash,
-      label: "My SNIP20" + Math.ceil(Math.random() * 10000), // The label should be unique for every contract, add random string in order to maintain uniqueness
+      label: "amber" + Math.ceil(Math.random() * 10000), // The label should be unique for every contract, add random string in order to maintain uniqueness
     },
     {
-      gasLimit: 5000000,
+      gasLimit: 4000000,
     }
   );
 
@@ -132,22 +132,25 @@ const initializeSnip20 = async (
 const initializeMigratorContract = async (
   client: SecretNetworkClient,
   contractPath: string,
+  snip20Hash: string,
+  snip20Address: string,
   snip25Hash: string,
   snip25Address: string
 ) => {
   const wasmCode = fs.readFileSync(contractPath);
-  console.log("\nUploading example contract");
+  console.log("\nUploading migrator contract");
 
   const uploadReceipt = await client.tx.compute.storeCode(
     {
       wasm_byte_code: wasmCode,
       sender: client.address,
-      source:
-        "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
-      builder: "enigmampc/secret-contract-optimizer:1.0.9",
+      source: "",
+      // "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
+      builder: "",
+      // "enigmampc/secret-contract-optimizer:1.0.9",
     },
     {
-      gasLimit: 5000000,
+      gasLimit: 2000000,
     }
   );
 
@@ -169,14 +172,15 @@ const initializeMigratorContract = async (
   const codeId = Number(codeIdKv!.value);
   console.log("Contract codeId: ", codeId);
 
-  const { code_hash: contractCodeHash } = await client.query.compute.codeHashByCodeId({code_id: codeId.toString()});
+  const { code_hash: contractCodeHash } =
+    await client.query.compute.codeHashByCodeId({ code_id: codeId.toString() });
   console.log(`Contract hash: ${contractCodeHash}`);
 
   const init_msg = {
-    token_addr: snip25Address,
-    token_hash: snip25Hash,
-    merkle_root:
-      "08a73156193962c44c237448cca7d1d7edb65fea3e8fde85dca5b4cbbac967c5",
+    old_token_addr: snip20Address,
+    old_token_hash: snip20Hash,
+    new_token_addr: snip25Address,
+    new_token_hash: snip25Hash,
   };
 
   const contract = await client.tx.compute.instantiateContract(
@@ -185,7 +189,7 @@ const initializeMigratorContract = async (
       code_id: codeId.toString(),
       init_msg: init_msg,
       code_hash: contractCodeHash,
-      label: "merkle-distributor" + Math.ceil(Math.random() * 10000), // The label should be unique for every contract, add random string in order to maintain uniqueness
+      label: "amber-migrator" + Math.ceil(Math.random() * 10000), // The label should be unique for every contract, add random string in order to maintain uniqueness
     },
     {
       gasLimit: 5000000,
@@ -246,20 +250,37 @@ async function initializeAndUploadContract() {
     await fillUpFromFaucet(client, 100_000_000);
   }
 
+  const [snip20Hash, snip20Address] = await initializeSnip20(
+    client,
+    "./tests/snip20.wasm.gz"
+  );
+
   const [snip25Hash, snip25Address] = await initializeSnip20(
     client,
-    "./snip20-reference-impl/contract.wasm.gz"
+    "./tests/snip25.wasm.gz"
   );
 
   const [migratorHash, migratorAddress] = await initializeMigratorContract(
     client,
-    "./token-migrator/contract.wasm.gz",
+    "./contract.wasm.gz",
+    snip20Hash,
+    snip20Address,
     snip25Hash,
     snip25Address
   );
 
-  const clientInfo: [SecretNetworkClient, string, string, string, string] = [
+  const clientInfo: [
+    SecretNetworkClient,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string
+  ] = [
     client,
+    snip20Hash,
+    snip20Address,
     snip25Hash,
     snip25Address,
     migratorHash,
@@ -270,23 +291,23 @@ async function initializeAndUploadContract() {
 
 async function sendTx(
   client: SecretNetworkClient,
-  snip25Hash: string,
-  snip25Address: string,
-  migratorHash: string,
-  migratorAddress: string
+  snip20Hash: string,
+  snip20Address: string,
+  recipient: string,
+  amount: string
 ) {
   const handle_msg = {
     send: {
-      recipient: migratorAddress,
-      amount: "1000000",
+      recipient,
+      amount,
     },
   };
 
   const tx = await client.tx.compute.executeContract(
     {
       sender: client.address,
-      contract_address: oldAmber.contract_address,
-      code_hash: oldAmber.code_hash,
+      contract_address: snip20Address,
+      code_hash: snip20Hash,
       msg: handle_msg,
       sent_funds: [],
     },
@@ -302,26 +323,130 @@ async function sendTx(
   console.log(`sendTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
 }
 
+async function query_migrator(
+  client: SecretNetworkClient,
+  migratorHash: string,
+  migratorAddress: string
+) {
+  const response = await client.query.compute.queryContract({
+    contract_address: migratorAddress,
+    code_hash: migratorHash,
+    query: { get_balances: {} },
+  }) as { old_token: { amount: string }, new_token: { amount: string } };
+
+  return response;
+}
+
 async function test_migrate(
   client: SecretNetworkClient,
+  snip20Hash: string,
+  snip20Address: string,
   snip25Hash: string,
   snip25Address: string,
   migratorHash: string,
   migratorAddress: string
 ) {
-	// TODO
-}
+  await sendTx(
+    client,
+    snip25Hash,
+    snip25Address,
+    migratorAddress,
+    "8888000000"
+  );
+  let migratorBalances = await query_migrator(client, migratorHash, migratorAddress);
+  assert(migratorBalances.old_token.amount == "0");
+  assert(migratorBalances.new_token.amount == "8888000000");
 
+  // sending old tokens to migrator
+  await sendTx(
+    client,
+    snip20Hash,
+    snip20Address,
+    migratorAddress,
+    "4444000000"
+  );
+
+  // check balances of migrator contract
+  migratorBalances = await query_migrator(client, migratorHash, migratorAddress);
+  assert(migratorBalances.old_token.amount == "4444000000");
+  assert(migratorBalances.new_token.amount == "4444000000");
+
+  // setting my own vk for old token
+  await client.tx.snip20.setViewingKey(
+    {
+      sender: client.address,
+      contract_address: snip20Address,
+      code_hash: snip20Hash,
+      msg: {
+        set_viewing_key: {
+          key: "yo",
+        },
+      },
+    },
+    {
+      gasLimit: 100_000,
+    }
+  );
+  // setting my own vk for new token
+  await client.tx.snip20.setViewingKey(
+    {
+      sender: client.address,
+      contract_address: snip25Address,
+      code_hash: snip25Hash,
+      msg: {
+        set_viewing_key: {
+          key: "oy",
+        },
+      },
+    },
+    {
+      gasLimit: 100_000,
+    }
+  );
+
+  // check my balances
+  const {
+    balance: { amount: oldAmberBalance },
+  } = await client.query.snip20.getBalance({
+    contract: {
+      address: snip20Address,
+      code_hash: snip20Hash,
+    },
+    address: client.address,
+    auth: {
+      key: "yo",
+    },
+  });
+  assert(oldAmberBalance == "4444000000");
+
+  const {
+    balance: { amount: newAmberBalance },
+  } = await client.query.snip20.getBalance({
+    contract: {
+      address: snip25Address,
+      code_hash: snip25Hash,
+    },
+    address: client.address,
+    auth: {
+      key: "oy",
+    },
+  });
+  assert(newAmberBalance == "4444000000");
+}
 
 async function runTestFunction(
   tester: (
     client: SecretNetworkClient,
+    snip20Hash: string,
+    snip20Address: string,
     snip25Hash: string,
     snip25Address: string,
     migratorHash: string,
     migratorAddress: string
   ) => void,
   client: SecretNetworkClient,
+  snip20Hash: string,
+  snip20Address: string,
   snip25Hash: string,
   snip25Address: string,
   migratorHash: string,
@@ -330,6 +455,8 @@ async function runTestFunction(
   console.log(`\n[  \x1b[35mTEST\x1b[0m  ] ${tester.name}\n`);
   await tester(
     client,
+    snip20Hash,
+    snip20Address,
     snip25Hash,
     snip25Address,
     migratorHash,
@@ -339,12 +466,21 @@ async function runTestFunction(
 }
 
 (async () => {
-  const [client, snip25Hash, snip25Address, migratorHash, migratorAddress] =
-    await initializeAndUploadContract();
+  const [
+    client,
+    snip20Hash,
+    snip20Address,
+    snip25Hash,
+    snip25Address,
+    migratorHash,
+    migratorAddress,
+  ] = await initializeAndUploadContract();
 
   await runTestFunction(
     test_migrate,
     client,
+    snip20Hash,
+    snip20Address,
     snip25Hash,
     snip25Address,
     migratorHash,

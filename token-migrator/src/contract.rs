@@ -1,186 +1,132 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response,
+    StdError, StdResult, Uint128,
 };
+use secret_toolkit::snip20;
 
-use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{
+    BalancesResponse, ExecuteAnswer, ExecuteMsg, InstantiateMsg, QueryMsg, ResponseStatus::Success,
+};
 use crate::state::{config, config_read, State};
 
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let state = State {
-        count: msg.count,
-        owner: deps.api.addr_canonicalize(info.sender.as_str())?,
+        admin: info.sender,
+        contract_address: env.contract.address,
+        old_token_addr: msg.old_token_addr,
+        old_token_hash: msg.old_token_hash,
+        old_token_viewing_key: "amber_rocks".to_string(),
+        new_token_addr: msg.new_token_addr,
+        new_token_hash: msg.new_token_hash,
+        new_token_viewing_key: "amber_still_rocks".to_string(),
     };
 
-    deps.api
-        .debug(format!("Contract was initialized by {}", info.sender).as_str());
     config(deps.storage).save(&state)?;
 
-    Ok(Response::default())
+    let msg1 = snip20::set_viewing_key_msg(
+        state.old_token_viewing_key,
+        None,
+        256,
+        state.old_token_hash.clone(),
+        state.old_token_addr.clone().into_string(),
+    )?;
+
+    let msg2 = snip20::set_viewing_key_msg(
+        state.new_token_viewing_key,
+        None,
+        256,
+        state.new_token_hash,
+        state.new_token_addr.into_string(),
+    )?;
+
+    let msg3 = snip20::register_receive_msg(
+        env.contract.code_hash,
+        None,
+        256,
+        state.old_token_hash,
+        state.old_token_addr.into_string(),
+    )?;
+
+    Ok(Response::new()
+        .add_messages(vec![msg1, msg2, msg3])
+    )
 }
 
 #[entry_point]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     match msg {
-        ExecuteMsg::Increment {} => try_increment(deps, env),
-        ExecuteMsg::Reset { count } => try_reset(deps, info, count),
+        ExecuteMsg::Receive { from, amount, .. } => try_receive(deps, env, info, from, amount),
     }
 }
 
-pub fn try_increment(deps: DepsMut, _env: Env) -> StdResult<Response> {
-    config(deps.storage).update(|mut state| -> Result<_, StdError> {
-        state.count += 1;
-        Ok(state)
-    })?;
+pub fn try_receive(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    from: Addr,
+    amount: Uint128,
+) -> StdResult<Response> {
+    let state = config_read(deps.storage).load()?;
+    if &state.old_token_addr != &info.sender {
+        return Err(StdError::generic_err(format!(
+            "{} is not a known SNIP-20 token that this contract registered to",
+            info.sender
+        )));
+    }
 
-    deps.api.debug("count incremented successfully");
-    Ok(Response::default())
-}
+    // Transfer an amount of new tokens equal to the old tokens received, 
+    // to the same account from which they were sent
+    let message = snip20::transfer_msg(
+        from.into_string(),
+        amount,
+        Some("Thanks for migrating".to_string()),
+        None,
+        256,
+        state.new_token_hash,
+        state.new_token_addr.into_string(),
+    )?;
 
-pub fn try_reset(deps: DepsMut, info: MessageInfo, count: i32) -> StdResult<Response> {
-    let sender_address_raw = deps.api.addr_canonicalize(info.sender.as_str())?;
-    config(deps.storage).update(|mut state| {
-        if sender_address_raw != state.owner {
-            return Err(StdError::generic_err("Only the owner can reset count"));
-        }
-        state.count = count;
-        Ok(state)
-    })?;
-
-    deps.api.debug("count reset successfully");
-    Ok(Response::default())
+    Ok(Response::new()
+        .add_message(message)
+        .set_data(to_binary(&ExecuteAnswer::Receive { status: Success })?))
 }
 
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
+        QueryMsg::GetBalances {} => to_binary(&query_balances(deps)?),
     }
 }
 
-fn query_count(deps: Deps) -> StdResult<CountResponse> {
+fn query_balances(deps: Deps) -> StdResult<BalancesResponse> {
     let state = config_read(deps.storage).load()?;
-    Ok(CountResponse { count: state.count })
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cosmwasm_std::testing::*;
-    use cosmwasm_std::{from_binary, Coin, StdError, Uint128};
+    let old_token = snip20::balance_query(
+        deps.querier,
+        state.contract_address.clone().into_string(),
+        state.old_token_viewing_key,
+        256,
+        state.old_token_hash,
+        state.old_token_addr.into_string(),
+    )?;
 
-    #[test]
-    fn proper_initialization() {
-        let mut deps = mock_dependencies();
-        let info = mock_info(
-            "creator",
-            &[Coin {
-                denom: "earth".to_string(),
-                amount: Uint128::new(1000),
-            }],
-        );
-        let init_msg = InstantiateMsg { count: 17 };
+    let new_token = snip20::balance_query(
+        deps.querier,
+        state.contract_address.into_string(),
+        state.new_token_viewing_key,
+        256,
+        state.new_token_hash,
+        state.new_token_addr.into_string(),
+    )?;
 
-        // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info, init_msg).unwrap();
-
-        assert_eq!(0, res.messages.len());
-
-        // it worked, let's query the state
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(17, value.count);
-    }
-
-    #[test]
-    fn increment() {
-        let mut deps = mock_dependencies_with_balance(&[Coin {
-            denom: "token".to_string(),
-            amount: Uint128::new(2),
-        }]);
-        let info = mock_info(
-            "creator",
-            &[Coin {
-                denom: "token".to_string(),
-                amount: Uint128::new(2),
-            }],
-        );
-        let init_msg = InstantiateMsg { count: 17 };
-
-        let _res = instantiate(deps.as_mut(), mock_env(), info, init_msg).unwrap();
-
-        // anyone can increment
-        let info = mock_info(
-            "anyone",
-            &[Coin {
-                denom: "token".to_string(),
-                amount: Uint128::new(2),
-            }],
-        );
-
-        let exec_msg = ExecuteMsg::Increment {};
-        let _res = execute(deps.as_mut(), mock_env(), info, exec_msg).unwrap();
-
-        // should increase counter by 1
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(18, value.count);
-    }
-
-    #[test]
-    fn reset() {
-        let mut deps = mock_dependencies_with_balance(&[Coin {
-            denom: "token".to_string(),
-            amount: Uint128::new(2),
-        }]);
-        let info = mock_info(
-            "creator",
-            &[Coin {
-                denom: "token".to_string(),
-                amount: Uint128::new(2),
-            }],
-        );
-        let init_msg = InstantiateMsg { count: 17 };
-
-        let _res = instantiate(deps.as_mut(), mock_env(), info, init_msg).unwrap();
-
-        // not anyone can reset
-        let info = mock_info(
-            "anyone",
-            &[Coin {
-                denom: "token".to_string(),
-                amount: Uint128::new(2),
-            }],
-        );
-        let exec_msg = ExecuteMsg::Reset { count: 5 };
-
-        let res = execute(deps.as_mut(), mock_env(), info, exec_msg);
-
-        match res {
-            Err(StdError::GenericErr { .. }) => {}
-            _ => panic!("Must return unauthorized error"),
-        }
-
-        // only the original creator can reset the counter
-        let info = mock_info(
-            "creator",
-            &[Coin {
-                denom: "token".to_string(),
-                amount: Uint128::new(2),
-            }],
-        );
-        let exec_msg = ExecuteMsg::Reset { count: 5 };
-
-        let _res = execute(deps.as_mut(), mock_env(), info, exec_msg).unwrap();
-
-        // should now be 5
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(5, value.count);
-    }
+    Ok(BalancesResponse {
+        old_token,
+        new_token,
+    })
 }

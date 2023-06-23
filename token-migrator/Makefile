@@ -7,7 +7,9 @@ clippy:
 	cargo clippy
 
 PHONY: test
-test: unit-test
+test:
+	npm i --prefix tests/
+	npx ts-node tests/integration.ts
 
 .PHONY: unit-test
 unit-test:
@@ -50,10 +52,10 @@ schema:
 # Run local development chain with four funded accounts (named a, b, c, and d)
 .PHONY: start-server
 start-server: # CTRL+C to stop
-	docker run -it --rm \
+	docker run -idt --rm \
 		-p 9091:9091 -p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 \
 		-v $$(pwd):/root/code \
-		--name secretdev ghcr.io/scrtlabs/localsecret:v1.8.0
+		--name secretdev ghcr.io/scrtlabs/localsecret:v1.9.3
 
 # This relies on running `start-server` in another console
 # You can run other commands on the secretcli inside the dev image

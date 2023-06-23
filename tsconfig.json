@@ -1,8 +1,15 @@
 {
-    "compilerOptions": {
-        "esModuleInterop": true,
-        "moduleResolution": "node"
-      },
-      "include": ["/**/*.ts", "snapshot-scripts/*"],
-      "exclude": ["node_modules"]
+  "extends": "@tsconfig/node18/tsconfig.json",
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true
+  },
+  "include": [
+    "/**/*.ts",
+    "snapshot-scripts/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

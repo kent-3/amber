@@ -1,0 +1,48 @@
+[package]
+name = "token-migrator"
+version = "0.1.0"
+edition = "2021"
+exclude = [
+  # Those files are contract-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  "contract.wasm",
+  "hash.txt",
+]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = 'abort'
+incremental = false
+overflow-checks = true
+
+[features]
+default = []
+# for quicker tests, cargo test --lib
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+
+[dependencies]
+cosmwasm-std = { git = "https://github.com/scrtlabs/cosmwasm", tag = "v1.1.9-secret" }
+cosmwasm-storage = { git = "https://github.com/scrtlabs/cosmwasm", tag = "v1.1.9-secret" }
+cosmwasm-schema = { version = "1.2" }
+schemars = { version = "0.8" }
+serde = { version = "1.0" }
+serde-json-wasm = { version = "0.5"}
+thiserror = { version = "1.0" }
+secret-toolkit = { git = "https://github.com/scrtlabs/secret-toolkit", tag = "v0.9.0", default-features = false, features = ["serialization", "storage", "utils"] }
+cw-storage-plus = { version = "1", default-features = false, features = ["macro"] }
+
+[dev-dependencies]
+
+[patch.crates-io]
+cosmwasm-std = { git = "https://github.com/scrtlabs/cosmwasm", tag = "v1.1.9-secret" }
+
+[[bin]]
+name = "schema"

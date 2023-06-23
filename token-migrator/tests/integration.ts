@@ -1,19 +1,29 @@
 import axios from "axios";
-import { Wallet, SecretNetworkClient, fromUtf8 } from "secretjs";
+import { Wallet, SecretNetworkClient } from "secretjs";
 import fs from "fs";
 import assert from "assert";
 import "dotenv/config";
+import * as contracts from "../../messages/contracts.json"
 
 var mnemonic: string;
 var endpoint: string = "http://localhost:9091";
 var chainId: string = "secretdev-1";
-var ADMIN_ADDRESS: string;
 
 // uncomment when using .env file
 // mnemonic = process.env.MNEMONIC!;
 // endpoint = process.env.GRPC_WEB_URL!;
 // chainId = process.env.CHAIN_ID!;
-// ADMIN_ADDRESS = process.env.ADMIN_ADDRESS!;
+
+interface ContractInfo {
+		contract_address: string,
+		code_hash: string,
+		code_id: number,
+		creator: string,
+		label: string,
+}
+
+const oldAmber: ContractInfo = contracts.original_amber;
+
 
 // Returns a client with which we can interact with secret network
 const initializeClient = async (endpoint: string, chainId: string) => {
@@ -47,11 +57,12 @@ const initializeSnip20 = async (
     {
       wasm_byte_code: wasmCode,
       sender: client.address,
-      source: "",
-      builder: "",
+      source:
+        "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
+      builder: "enigmampc/secret-contract-optimizer:1.0.9",
     },
     {
-      gasLimit: 3000000,
+      gasLimit: 5000000,
     }
   );
 
@@ -73,38 +84,19 @@ const initializeSnip20 = async (
   const codeId = Number(codeIdKv!.value);
   console.log("Contract codeId: ", codeId);
 
-  const { code_hash: contractCodeHash } = await client.query.compute.codeHashByCodeId({
-    code_id: codeId.toString(),
-  });
+  const { code_hash: contractCodeHash } =
+    await client.query.compute.codeHashByCodeId({ code_id: codeId.toString() });
   console.log(`Contract hash: ${contractCodeHash}`);
 
-  ///////////////////////////////////////////////////////////////////////
   const init_msg = {
-    name: "Amber",
+    name: "secret-secret",
     admin: client.address,
-    symbol: "AMBER",
+    symbol: "SSCRT",
     decimals: 6,
     initial_balances: [{ address: client.address, amount: "8888000000" }],
     prng_seed: Buffer.from("amber rocks").toString("base64"),
-    config: {
-      /// Indicates whether the total supply is public or should be kept secret.
-      /// default: False
-      public_total_supply: true,
-      /// Indicates whether deposit functionality should be enabled
-      /// default: False
-      enable_deposit: false,
-      /// Indicates whether redeem functionality should be enabled
-      /// default: False
-      enable_redeem: false,
-      /// Indicates whether mint functionality should be enabled
-      /// default: False
-      enable_mint: false,
-      /// Indicates whether burn functionality should be enabled
-      /// default: False
-      enable_burn: false,
-    },
+    config: { public_total_supply: true },
   };
-  ///////////////////////////////////////////////////////////////////////
 
   const contract = await client.tx.compute.instantiateContract(
     {
@@ -112,10 +104,10 @@ const initializeSnip20 = async (
       code_id: codeId.toString(),
       init_msg: init_msg,
       code_hash: contractCodeHash,
-      label: "amber_test " + Math.ceil(Math.random() * 10000), // The label should be unique for every contract, add random string in order to maintain uniqueness
+      label: "My SNIP20" + Math.ceil(Math.random() * 10000), // The label should be unique for every contract, add random string in order to maintain uniqueness
     },
     {
-      gasLimit: 2000000,
+      gasLimit: 5000000,
     }
   );
 
@@ -133,28 +125,29 @@ const initializeSnip20 = async (
 
   console.log(`Init used \x1b[33m${contract.gasUsed}\x1b[0m gas`);
 
-  var contractInfo: [string, string] = [contractCodeHash, contractAddress];
+  var contractInfo: [string, string] = [contractCodeHash!, contractAddress];
   return contractInfo;
 };
 
-const initializeDistributorContract = async (
+const initializeMigratorContract = async (
   client: SecretNetworkClient,
   contractPath: string,
-  snip20Hash: string,
-  snip20Address: string
+  snip25Hash: string,
+  snip25Address: string
 ) => {
   const wasmCode = fs.readFileSync(contractPath);
-  console.log("\nUploading distributor contract");
+  console.log("\nUploading example contract");
 
   const uploadReceipt = await client.tx.compute.storeCode(
     {
       wasm_byte_code: wasmCode,
       sender: client.address,
-      source: "",
-      builder: "",
+      source:
+        "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
+      builder: "enigmampc/secret-contract-optimizer:1.0.9",
     },
     {
-      gasLimit: 3000000,
+      gasLimit: 5000000,
     }
   );
 
@@ -176,14 +169,12 @@ const initializeDistributorContract = async (
   const codeId = Number(codeIdKv!.value);
   console.log("Contract codeId: ", codeId);
 
-  const { code_hash: contractCodeHash } = await client.query.compute.codeHashByCodeId({
-    code_id: codeId.toString(),
-  });
+  const { code_hash: contractCodeHash } = await client.query.compute.codeHashByCodeId({code_id: codeId.toString()});
   console.log(`Contract hash: ${contractCodeHash}`);
 
   const init_msg = {
-    token_addr: snip20Address,
-    token_hash: snip20Hash,
+    token_addr: snip25Address,
+    token_hash: snip25Hash,
     merkle_root:
       "08a73156193962c44c237448cca7d1d7edb65fea3e8fde85dca5b4cbbac967c5",
   };
@@ -194,10 +185,10 @@ const initializeDistributorContract = async (
       code_id: codeId.toString(),
       init_msg: init_msg,
       code_hash: contractCodeHash,
-      label: "merkle-distributor " + Math.ceil(Math.random() * 10000), // The label should be unique for every contract, add random string in order to maintain uniqueness
+      label: "merkle-distributor" + Math.ceil(Math.random() * 10000), // The label should be unique for every contract, add random string in order to maintain uniqueness
     },
     {
-      gasLimit: 2000000,
+      gasLimit: 5000000,
     }
   );
 
@@ -215,7 +206,7 @@ const initializeDistributorContract = async (
 
   console.log(`Init used \x1b[33m${contract.gasUsed}\x1b[0m gas`);
 
-  var contractInfo: [string, string] = [contractCodeHash, contractAddress];
+  var contractInfo: [string, string] = [contractCodeHash!, contractAddress];
   return contractInfo;
 };
 
@@ -228,7 +219,7 @@ async function getScrtBalance(userCli: SecretNetworkClient): Promise<string> {
     address: userCli.address,
     denom: "uscrt",
   });
-  return balanceResponse.balance!.amount;
+  return balanceResponse.balance?.amount!;
 }
 
 async function fillUpFromFaucet(
@@ -255,47 +246,47 @@ async function initializeAndUploadContract() {
     await fillUpFromFaucet(client, 100_000_000);
   }
 
-  const [snip20Hash, snip20Address] = await initializeSnip20(
+  const [snip25Hash, snip25Address] = await initializeSnip20(
     client,
     "./snip20-reference-impl/contract.wasm.gz"
   );
 
-  const [distributorHash, distributorAddress] = await initializeDistributorContract(
+  const [migratorHash, migratorAddress] = await initializeMigratorContract(
     client,
-    "./merkle-distributor/contract.wasm.gz",
-    snip20Hash,
-    snip20Address
+    "./token-migrator/contract.wasm.gz",
+    snip25Hash,
+    snip25Address
   );
 
-  var clientInfo: [SecretNetworkClient, string, string, string, string] = [
+  const clientInfo: [SecretNetworkClient, string, string, string, string] = [
     client,
-    snip20Hash,
-    snip20Address,
-    distributorHash,
-    distributorAddress,
+    snip25Hash,
+    snip25Address,
+    migratorHash,
+    migratorAddress,
   ];
   return clientInfo;
 }
 
 async function sendTx(
   client: SecretNetworkClient,
-  snip20Hash: string,
-  snip20Address: string,
-  distributorHash: string,
-  distributorAddress: string
+  snip25Hash: string,
+  snip25Address: string,
+  migratorHash: string,
+  migratorAddress: string
 ) {
   const handle_msg = {
     send: {
-      recipient: distributorAddress,
-      amount: "5110600000",
+      recipient: migratorAddress,
+      amount: "1000000",
     },
   };
 
   const tx = await client.tx.compute.executeContract(
     {
       sender: client.address,
-      contract_address: snip20Address,
-      code_hash: snip20Hash,
+      contract_address: oldAmber.contract_address,
+      code_hash: oldAmber.code_hash,
       msg: handle_msg,
       sent_funds: [],
     },
@@ -311,57 +302,52 @@ async function sendTx(
   console.log(`sendTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
 }
 
-async function test_init_tx(
+async function test_migrate(
   client: SecretNetworkClient,
-  snip20Hash: string,
-  snip20Address: string,
-  distributorHash: string,
-  distributorAddress: string
+  snip25Hash: string,
+  snip25Address: string,
+  migratorHash: string,
+  migratorAddress: string
 ) {
-  await sendTx(
-    client,
-    snip20Hash,
-    snip20Address,
-    distributorHash,
-    distributorAddress
-  );
+	// TODO
 }
+
 
 async function runTestFunction(
   tester: (
     client: SecretNetworkClient,
-    snip20Hash: string,
-    snip20Address: string,
-    depositorHash: string,
-    depositorAddress: string
+    snip25Hash: string,
+    snip25Address: string,
+    migratorHash: string,
+    migratorAddress: string
   ) => void,
   client: SecretNetworkClient,
-  snip20Hash: string,
-  snip20Address: string,
-  depositorHash: string,
-  depositorAddress: string
+  snip25Hash: string,
+  snip25Address: string,
+  migratorHash: string,
+  migratorAddress: string
 ) {
   console.log(`\n[  \x1b[35mTEST\x1b[0m  ] ${tester.name}\n`);
   await tester(
     client,
-    snip20Hash,
-    snip20Address,
-    depositorHash,
-    depositorAddress
+    snip25Hash,
+    snip25Address,
+    migratorHash,
+    migratorAddress
   );
   console.log(`\n[   \x1b[32mOK\x1b[0m   ] ${tester.name}\n`);
 }
 
 (async () => {
-  const [client, snip20Hash, snip20Address, depositorHash, depositorAddress] =
+  const [client, snip25Hash, snip25Address, migratorHash, migratorAddress] =
     await initializeAndUploadContract();
 
   await runTestFunction(
-    test_init_tx,
+    test_migrate,
     client,
-    snip20Hash,
-    snip20Address,
-    depositorHash,
-    depositorAddress
+    snip25Hash,
+    snip25Address,
+    migratorHash,
+    migratorAddress
   );
 })();

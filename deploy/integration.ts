@@ -2,8 +2,8 @@ import axios from "axios";
 import { Wallet, SecretNetworkClient } from "secretjs";
 import fs from "fs";
 import assert from "assert";
-import 'dotenv/config'
- 
+import "dotenv/config";
+
 var mnemonic: string;
 var endpoint: string = "http://localhost:9091";
 var chainId: string = "secretdev-1";
@@ -12,7 +12,6 @@ var chainId: string = "secretdev-1";
 // mnemonic = process.env.MNEMONIC!;
 // endpoint = process.env.GRPC_WEB_URL!;
 // chainId = process.env.CHAIN_ID!;
-
 
 // Returns a client with which we can interact with secret network
 const initializeClient = async (endpoint: string, chainId: string) => {
@@ -23,9 +22,9 @@ const initializeClient = async (endpoint: string, chainId: string) => {
     wallet = new Wallet();
   }
   const accAddress = wallet.address;
-  const client = await SecretNetworkClient.create({
+  const client = new SecretNetworkClient({
     // Create a client to interact with the network
-    grpcWebUrl: endpoint,
+    url: endpoint,
     chainId: chainId,
     wallet: wallet,
     walletAddress: accAddress,
@@ -37,16 +36,17 @@ const initializeClient = async (endpoint: string, chainId: string) => {
 
 const initializeSnip20 = async (
   client: SecretNetworkClient,
-  contractPath: string,
+  contractPath: string
 ) => {
   const wasmCode = fs.readFileSync(contractPath);
   console.log("\nUploading contract");
 
   const uploadReceipt = await client.tx.compute.storeCode(
     {
-      wasmByteCode: wasmCode,
+      wasm_byte_code: wasmCode,
       sender: client.address,
-      source: "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
+      source:
+        "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
       builder: "enigmampc/secret-contract-optimizer:1.0.9",
     },
     {
@@ -72,25 +72,26 @@ const initializeSnip20 = async (
   const codeId = Number(codeIdKv!.value);
   console.log("Contract codeId: ", codeId);
 
-  const contractCodeHash = await client.query.compute.codeHash(codeId);
+  const { code_hash: contractCodeHash } =
+    await client.query.compute.codeHashByCodeId({ code_id: codeId.toString() });
   console.log(`Contract hash: ${contractCodeHash}`);
 
-  const init_msg = { 
+  const init_msg = {
     name: "secret-secret",
     admin: client.address,
     symbol: "SSCRT",
     decimals: 6,
-    initial_balances:[{"address": client.address, "amount":"8888000000"}],
-    prng_seed: Buffer.from("amber rocks").toString('base64'),
-    config:{"public_total_supply":true}
+    initial_balances: [{ address: client.address, amount: "8888000000" }],
+    prng_seed: Buffer.from("amber rocks").toString("base64"),
+    config: { public_total_supply: true },
   };
 
   const contract = await client.tx.compute.instantiateContract(
     {
       sender: client.address,
-      codeId,
-      initMsg: init_msg,
-      codeHash: contractCodeHash,
+      code_id: codeId.toString(),
+      init_msg: init_msg,
+      code_hash: contractCodeHash,
       label: "My SNIP20" + Math.ceil(Math.random() * 10000), // The label should be unique for every contract, add random string in order to maintain uniqueness
     },
     {
@@ -120,16 +121,17 @@ const initializeContract = async (
   client: SecretNetworkClient,
   contractPath: string,
   snip20Hash: string,
-  snip20Address: string,
+  snip20Address: string
 ) => {
   const wasmCode = fs.readFileSync(contractPath);
   console.log("\nUploading example contract");
 
   const uploadReceipt = await client.tx.compute.storeCode(
     {
-      wasmByteCode: wasmCode,
+      wasm_byte_code: wasmCode,
       sender: client.address,
-      source: "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
+      source:
+        "https://github.com/kent-3/amber/archive/refs/tags/v0.1.0-beta.tar.gz",
       builder: "enigmampc/secret-contract-optimizer:1.0.9",
     },
     {
@@ -155,21 +157,22 @@ const initializeContract = async (
   const codeId = Number(codeIdKv!.value);
   console.log("Contract codeId: ", codeId);
 
-  const contractCodeHash = await client.query.compute.codeHash(codeId);
+  const { code_hash: contractCodeHash } = await client.query.compute.codeHashByCodeId({code_id: codeId.toString()});
   console.log(`Contract hash: ${contractCodeHash}`);
-  
+
   const init_msg = {
     token_addr: snip20Address,
     token_hash: snip20Hash,
-    merkle_root: "08a73156193962c44c237448cca7d1d7edb65fea3e8fde85dca5b4cbbac967c5",
+    merkle_root:
+      "08a73156193962c44c237448cca7d1d7edb65fea3e8fde85dca5b4cbbac967c5",
   };
 
   const contract = await client.tx.compute.instantiateContract(
     {
       sender: client.address,
-      codeId,
-      initMsg: init_msg,
-      codeHash: contractCodeHash,
+      code_id: codeId.toString(),
+      init_msg: init_msg,
+      code_hash: contractCodeHash,
       label: "merkle-distributor" + Math.ceil(Math.random() * 10000), // The label should be unique for every contract, add random string in order to maintain uniqueness
     },
     {
@@ -225,21 +228,22 @@ async function fillUpFromFaucet(
 
 // Initialization procedure
 async function initializeAndUploadContract() {
-
   const client = await initializeClient(endpoint, chainId);
 
-  if (chainId == "secretdev-1") {await fillUpFromFaucet(client, 100_000_000)};
-  
+  if (chainId == "secretdev-1") {
+    await fillUpFromFaucet(client, 100_000_000);
+  }
+
   const [snip20Hash, snip20Address] = await initializeSnip20(
     client,
-    "./snip20-reference-impl/contract.wasm.gz",
+    "./snip20-reference-impl/contract.wasm.gz"
   );
-  
+
   const [distributorHash, distributorAddress] = await initializeContract(
     client,
     "./merkle-distributor/contract.wasm.gz",
     snip20Hash,
-    snip20Address,
+    snip20Address
   );
 
   var clientInfo: [SecretNetworkClient, string, string, string, string] = [
@@ -257,22 +261,22 @@ async function sendTx(
   snip20Hash: string,
   snip20Address: string,
   distributorHash: string,
-  distributorAddress: string,
+  distributorAddress: string
 ) {
   const handle_msg = {
-    send:{
-        recipient: distributorAddress,
-        amount: "5110600000"
-    }
+    send: {
+      recipient: distributorAddress,
+      amount: "5110600000",
+    },
   };
 
   const tx = await client.tx.compute.executeContract(
     {
       sender: client.address,
-      contractAddress: snip20Address,
-      codeHash: snip20Hash,
+      contract_address: snip20Address,
+      code_hash: snip20Hash,
       msg: handle_msg,
-      sentFunds: [],
+      sent_funds: [],
     },
     {
       gasLimit: 200000,
@@ -280,165 +284,178 @@ async function sendTx(
   );
 
   if (tx.code !== 0) {
-    throw new Error(
-      `Failed with the following error:\n ${tx.rawLog}`
-    );
-  };
+    throw new Error(`Failed with the following error:\n ${tx.rawLog}`);
+  }
 
   console.log(`sendTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
 }
 
 async function claimTx(
-    client: SecretNetworkClient,
-    snip20Hash: string,
-    snip20Address: string,
-    distributorHash: string,
-    distributorAddress: string,
-  ) {
-    const handle_msg = {
-        claim:{
-            index:"2",
-            address:"secret1qsjlkyspurmrhmp0fzchtfguqyvzfdwhn9seu6",
-            amount:"200000",
-            proof:["4c4eb3a5007ff5a079de1559429d99307842990d9cfdb43fdd3f543c130a736c", "6126c047a27a2ae4f5b643cd0574490894bc35a20bbb7955b927937f0817ba07", "5a70f4ca1debd8b60edae74fd750f5347ec84506023f222551f9c926760554e7", "faa89bfd105ce6032ec2a77409198b4e8c4f1e065d268252feb90f90e4e8c92f", "73e6b31ca2135fb958929d16e57a639566b1e7e147ca429cd1f51bc0ebf623b7", "ff0d76e0d6a8206bf6d480a5f65629ba31a5537e049c19952286b24e90cc2d6f", "54cd4462c3bc1098a3b15f46b43e98fd9165a8a6d60d8b944dd9ca15e1a2e0a7", "37eb34a046c5bc952343ec0e5553f16408b1fbf747c5512131fed20bdd3a778f", "3d0e2d622cc20c55879eb5347711f7cf94a0282a7cf02179c6f0ce33aefbbbd9", "231f9e40e15b6d8dc7cbedc44fe87ac5be32348d28d2ceb770f10f7277745b44", "52efbcfdc188262b497edfef7aabd5bc57fc2d0549fe4d4c137b0dee6e43ff5a", "4100a6e1fa2e02163be5c0f4ec219bebcb7b600235b496319f6f1f77001589ab", "2235ce444bf5d62a9b99798b29715944fc44d1f4abbd416ff81846f559e5e388", "173223d03daae51a45b1b2d38d4f45030e882ce1c790c5f679d8d8e483efa675", "be8cf40e134a2bad08cb902bcedda49bc82b707ef57ae7b8bb1a2212c3927d1c"]
-        }
-    };
-  
-    const tx = await client.tx.compute.executeContract(
-      {
-        sender: client.address,
-        contractAddress: distributorAddress,
-        codeHash: distributorHash,
-        msg: handle_msg,
-        sentFunds: [],
-      },
-      {
-        gasLimit: 500000,
-      }
-    );
-  
-    if (tx.code !== 0) {
-      throw new Error(
-        `Failed with the following error:\n ${tx.rawLog}`
-      );
-    };
+  client: SecretNetworkClient,
+  snip20Hash: string,
+  snip20Address: string,
+  distributorHash: string,
+  distributorAddress: string
+) {
+  const handle_msg = {
+    claim: {
+      index: "2",
+      address: "secret1qsjlkyspurmrhmp0fzchtfguqyvzfdwhn9seu6",
+      amount: "200000",
+      proof: [
+        "4c4eb3a5007ff5a079de1559429d99307842990d9cfdb43fdd3f543c130a736c",
+        "6126c047a27a2ae4f5b643cd0574490894bc35a20bbb7955b927937f0817ba07",
+        "5a70f4ca1debd8b60edae74fd750f5347ec84506023f222551f9c926760554e7",
+        "faa89bfd105ce6032ec2a77409198b4e8c4f1e065d268252feb90f90e4e8c92f",
+        "73e6b31ca2135fb958929d16e57a639566b1e7e147ca429cd1f51bc0ebf623b7",
+        "ff0d76e0d6a8206bf6d480a5f65629ba31a5537e049c19952286b24e90cc2d6f",
+        "54cd4462c3bc1098a3b15f46b43e98fd9165a8a6d60d8b944dd9ca15e1a2e0a7",
+        "37eb34a046c5bc952343ec0e5553f16408b1fbf747c5512131fed20bdd3a778f",
+        "3d0e2d622cc20c55879eb5347711f7cf94a0282a7cf02179c6f0ce33aefbbbd9",
+        "231f9e40e15b6d8dc7cbedc44fe87ac5be32348d28d2ceb770f10f7277745b44",
+        "52efbcfdc188262b497edfef7aabd5bc57fc2d0549fe4d4c137b0dee6e43ff5a",
+        "4100a6e1fa2e02163be5c0f4ec219bebcb7b600235b496319f6f1f77001589ab",
+        "2235ce444bf5d62a9b99798b29715944fc44d1f4abbd416ff81846f559e5e388",
+        "173223d03daae51a45b1b2d38d4f45030e882ce1c790c5f679d8d8e483efa675",
+        "be8cf40e134a2bad08cb902bcedda49bc82b707ef57ae7b8bb1a2212c3927d1c",
+      ],
+    },
+  };
 
-    const status = tx.arrayLog!.find(
-        (log) => log.type === "wasm" && log.key === "status"
-      )!.value;
+  const tx = await client.tx.compute.executeContract(
+    {
+      sender: client.address,
+      contract_address: distributorAddress,
+      code_hash: distributorHash,
+      msg: handle_msg,
+      sent_funds: [],
+    },
+    {
+      gasLimit: 500000,
+    }
+  );
 
-    assert(status, "success");
-  
-    console.log(`claimTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
-  }
-  
-  async function retrieveTx(
-    client: SecretNetworkClient,
-    snip20Hash: string,
-    snip20Address: string,
-    distributorHash: string,
-    distributorAddress: string,
-  ) {
-    const handle_msg = {
-      retrieve:{ 
-        address: client.address,
-      }
-    };
-  
-    const tx = await client.tx.compute.executeContract(
-      {
-        sender: client.address,
-        contractAddress: distributorAddress,
-        codeHash: distributorHash,
-        msg: handle_msg,
-        sentFunds: [],
-      },
-      {
-        gasLimit: 500000,
-      }
-    );
-  
-    if (tx.code !== 0) {
-      throw new Error(
-        `Failed with the following error:\n ${tx.rawLog}`
-      );
-    };
-
-    const status = tx.arrayLog!.find(
-        (log) => log.type === "wasm" && log.key === "status"
-      )!.value;
-
-    assert(status, "success");
-  
-    console.log(`retrieveTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
+  if (tx.code !== 0) {
+    throw new Error(`Failed with the following error:\n ${tx.rawLog}`);
   }
 
-  async function retrieveTxFail(
-    client: SecretNetworkClient,
-    snip20Hash: string,
-    snip20Address: string,
-    distributorHash: string,
-    distributorAddress: string,
-  ) {
-    const handle_msg = {
-      retrieve:{ 
-        address: client.address,
-      }
-    };
-  
-    const tx = await client.tx.compute.executeContract(
-      {
-        sender: client.address,
-        contractAddress: distributorAddress,
-        codeHash: distributorHash,
-        msg: handle_msg,
-        sentFunds: [],
-      },
-      {
-        gasLimit: 500000,
-      }
-    );
-  
-    assert(tx.rawLog, 'failed to execute message; message index: 0: {"generic_err":{"msg":"only admin can do that"}}: execute contract failed')
-  
-    console.log(`retrieveTxFail used \x1b[33m${tx.gasUsed}\x1b[0m gas\n`);
+  const status = tx.arrayLog!.find(
+    (log) => log.type === "wasm" && log.key === "status"
+  )!.value;
+
+  assert(status, "success");
+
+  console.log(`claimTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
+}
+
+async function retrieveTx(
+  client: SecretNetworkClient,
+  snip20Hash: string,
+  snip20Address: string,
+  distributorHash: string,
+  distributorAddress: string
+) {
+  const handle_msg = {
+    retrieve: {
+      address: client.address,
+    },
+  };
+
+  const tx = await client.tx.compute.executeContract(
+    {
+      sender: client.address,
+      contract_address: distributorAddress,
+      code_hash: distributorHash,
+      msg: handle_msg,
+      sent_funds: [],
+    },
+    {
+      gasLimit: 500000,
+    }
+  );
+
+  if (tx.code !== 0) {
+    throw new Error(`Failed with the following error:\n ${tx.rawLog}`);
   }
+
+  const status = tx.arrayLog!.find(
+    (log) => log.type === "wasm" && log.key === "status"
+  )!.value;
+
+  assert(status, "success");
+
+  console.log(`retrieveTx used \x1b[33m${tx.gasUsed}\x1b[0m gas`);
+}
+
+async function retrieveTxFail(
+  client: SecretNetworkClient,
+  snip20Hash: string,
+  snip20Address: string,
+  distributorHash: string,
+  distributorAddress: string
+) {
+  const handle_msg = {
+    retrieve: {
+      address: client.address,
+    },
+  };
+
+  const tx = await client.tx.compute.executeContract(
+    {
+      sender: client.address,
+      contract_address: distributorAddress,
+      code_hash: distributorHash,
+      msg: handle_msg,
+      sent_funds: [],
+    },
+    {
+      gasLimit: 500000,
+    }
+  );
+
+  assert(
+    tx.rawLog,
+    'failed to execute message; message index: 0: {"generic_err":{"msg":"only admin can do that"}}: execute contract failed'
+  );
+
+  console.log(`retrieveTxFail used \x1b[33m${tx.gasUsed}\x1b[0m gas\n`);
+}
 
 async function query_claimed(
   client: SecretNetworkClient,
   distributorHash: string,
-  distributorAddress: string,
+  distributorAddress: string
 ): Promise<boolean> {
   const query_msg = { is_claimed: { index: "2" } };
 
   const response = (await client.query.compute.queryContract({
-    contractAddress: distributorAddress,
-    codeHash: distributorHash,
+    contract_address: distributorAddress,
+    code_hash: distributorHash,
     query: query_msg,
   })) as boolean;
 
   console.log(`query claimed response: ${response}`);
-  return response
+  return response;
 }
 
 async function query_unclaimed(
   client: SecretNetworkClient,
   distributorHash: string,
-  distributorAddress: string,
+  distributorAddress: string
 ): Promise<string> {
   interface Result {
-    Ok: string
+    Ok: string;
   }
   const query_msg = { is_unclaimed: {} };
 
   const response = (await client.query.compute.queryContract({
-    contractAddress: distributorAddress,
-    codeHash: distributorHash,
+    contract_address: distributorAddress,
+    code_hash: distributorHash,
     query: query_msg,
   })) as Result;
 
   console.log(`query unclaimed response: ${response.Ok}`);
-  return response.Ok
+  return response.Ok;
 }
 
 async function test_init_tx(
@@ -448,22 +465,58 @@ async function test_init_tx(
   distributorHash: string,
   distributorAddress: string
 ) {
-  await sendTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
-  const query1 = await query_unclaimed(client, distributorHash, distributorAddress);
-  assert(query1, "5110600000")
-  await claimTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
-  const query2 = await query_unclaimed(client, distributorHash, distributorAddress);
-  assert(query2, "5110600000")
+  await sendTx(
+    client,
+    snip20Hash,
+    snip20Address,
+    distributorHash,
+    distributorAddress
+  );
+  const query1 = await query_unclaimed(
+    client,
+    distributorHash,
+    distributorAddress
+  );
+  assert(query1, "5110600000");
+  await claimTx(
+    client,
+    snip20Hash,
+    snip20Address,
+    distributorHash,
+    distributorAddress
+  );
+  const query2 = await query_unclaimed(
+    client,
+    distributorHash,
+    distributorAddress
+  );
+  assert(query2, "5110600000");
   if (chainId == "secretdev-1") {
     const differentClient = await initializeClient(endpoint, chainId);
     await fillUpFromFaucet(differentClient, 100_000_000);
-    await retrieveTxFail(differentClient, snip20Hash, snip20Address, distributorHash, distributorAddress);
+    await retrieveTxFail(
+      differentClient,
+      snip20Hash,
+      snip20Address,
+      distributorHash,
+      distributorAddress
+    );
   }
-  
-  await retrieveTx(client, snip20Hash, snip20Address, distributorHash, distributorAddress);
+
+  await retrieveTx(
+    client,
+    snip20Hash,
+    snip20Address,
+    distributorHash,
+    distributorAddress
+  );
   await query_claimed(client, distributorHash, distributorAddress);
-  const query3 = await query_unclaimed(client, distributorHash, distributorAddress);
-  assert(query3, "0")
+  const query3 = await query_unclaimed(
+    client,
+    distributorHash,
+    distributorAddress
+  );
+  assert(query3, "0");
 }
 
 async function runTestFunction(
@@ -472,16 +525,22 @@ async function runTestFunction(
     snip20Hash: string,
     snip20Address: string,
     depositorHash: string,
-    depositorAddress: string,
+    depositorAddress: string
   ) => void,
   client: SecretNetworkClient,
   snip20Hash: string,
   snip20Address: string,
   depositorHash: string,
-  depositorAddress: string,
+  depositorAddress: string
 ) {
   console.log(`\n[  \x1b[35mTEST\x1b[0m  ] ${tester.name}\n`);
-  await tester(client, snip20Hash, snip20Address, depositorHash, depositorAddress);
+  await tester(
+    client,
+    snip20Hash,
+    snip20Address,
+    depositorHash,
+    depositorAddress
+  );
   console.log(`\n[   \x1b[32mOK\x1b[0m   ] ${tester.name}\n`);
 }
 
@@ -492,9 +551,9 @@ async function runTestFunction(
   await runTestFunction(
     test_init_tx,
     client,
-    snip20Hash, 
-    snip20Address, 
-    depositorHash, 
-    depositorAddress,
+    snip20Hash,
+    snip20Address,
+    depositorHash,
+    depositorAddress
   );
 })();

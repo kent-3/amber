@@ -5,5 +5,19 @@
         "code_id": 563,
         "creator": "secret1jj30ulmuxem55awzhfnr802ml7rddufe0jadf7",
         "label": "amber-24"
+    },
+    "new_amber": {
+        "contract_address": "",
+        "code_hash": "",
+        "code_id": 877,
+        "creator": "",
+        "label": ""
+    },
+    "migration": {
+        "contract_address": "",
+        "code_hash": "",
+        "code_id": 0,
+        "creator": "",
+        "label": ""
     }
 }

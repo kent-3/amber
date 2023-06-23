@@ -1,7 +1,6 @@
 {
   "name": "amber",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -10,21 +9,19 @@
     "type": "git",
     "url": "git+https://github.com/kent-3/amber.git"
   },
-  "author": "",
+  "author": "kent",
   "license": "ISC",
   "dependencies": {
-    "secretjs": "^1.4.5",
-    "axios": "^1.1.3",
-    "crypto-js": "^4.1.1",
     "@iarna/toml": "^2.2.5",
-    "merkletreejs": "^0.2.32",
+    "@tsconfig/node18": "^2.0.1",
+    "@types/node": "^20.3.1",
     "assert": "^2.0.0",
-    "typescript": "^4.7.4",
-    "@types/node": "^18.0.3",
-    "dotenv": "^16.0.1"
-  },
-  "bugs": {
-    "url": "https://github.com/kent-3/amber/issues"
+    "axios": "^1.4.0",
+    "crypto-js": "^4.1.1",
+    "dotenv": "^16.3.1",
+    "merkletreejs": "^0.2.32",
+    "secretjs": "^1.9.3",
+    "typescript": "^5.1.3"
   },
   "homepage": "https://github.com/kent-3/amber#readme"
 }

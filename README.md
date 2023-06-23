@@ -1,4 +1,3 @@
-Project is still in development. More details coming soon!
 
 ```
    █████████   ██████   ██████ ███████████  ██████████ ███████████  
@@ -33,11 +32,11 @@ BLOCK_HEIGHT=
 Run these commands:
 
 ```
-node scripts/query_stakers.js
+node snapshot-scripts/query_stakers.js
 ```
 
 ```
-python3 scripts/snapshot_secret.py 
+python3 snapshot-scripts/snapshot_secret.py 
 ```
 (need Docker for this part to run localsecret)
 ```

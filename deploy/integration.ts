@@ -113,7 +113,7 @@ const initializeSnip20 = async (
 
   console.log(`Init used \x1b[33m${contract.gasUsed}\x1b[0m gas`);
 
-  var contractInfo: [string, string] = [contractCodeHash, contractAddress];
+  var contractInfo: [string, string] = [contractCodeHash!, contractAddress];
   return contractInfo;
 };
 
@@ -194,7 +194,7 @@ const initializeContract = async (
 
   console.log(`Init used \x1b[33m${contract.gasUsed}\x1b[0m gas`);
 
-  var contractInfo: [string, string] = [contractCodeHash, contractAddress];
+  var contractInfo: [string, string] = [contractCodeHash!, contractAddress];
   return contractInfo;
 };
 
@@ -207,7 +207,7 @@ async function getScrtBalance(userCli: SecretNetworkClient): Promise<string> {
     address: userCli.address,
     denom: "uscrt",
   });
-  return balanceResponse.balance!.amount;
+  return balanceResponse.balance?.amount!;
 }
 
 async function fillUpFromFaucet(

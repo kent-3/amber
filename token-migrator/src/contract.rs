@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError,
+    StdResult, Uint128,
 };
 use secret_toolkit::snip20;
 
@@ -53,9 +53,7 @@ pub fn instantiate(
         state.old_token_addr.into_string(),
     )?;
 
-    Ok(Response::new()
-        .add_messages(vec![msg1, msg2, msg3])
-    )
+    Ok(Response::new().add_messages(vec![msg1, msg2, msg3]))
 }
 
 #[entry_point]
@@ -73,14 +71,14 @@ pub fn try_receive(
     amount: Uint128,
 ) -> StdResult<Response> {
     let state = config_read(deps.storage).load()?;
-    if &state.old_token_addr != &info.sender {
+    if state.old_token_addr != info.sender {
         return Err(StdError::generic_err(format!(
             "{} is not a known SNIP-20 token that this contract registered to",
             info.sender
         )));
     }
 
-    // Transfer an amount of new tokens equal to the old tokens received, 
+    // Transfer an amount of new tokens equal to the old tokens received,
     // to the same account from which they were sent
     let message = snip20::transfer_msg(
         from.into_string(),

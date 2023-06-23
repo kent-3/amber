@@ -7,7 +7,7 @@ name: Basic
 jobs:
 
   test:
-    name: Test Suite
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -17,7 +17,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.63.0
+          toolchain: 1.69.0
           target: wasm32-unknown-unknown
           override: true
 
@@ -25,7 +25,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: unit-test
-          args: --locked
+          args: --locked --manifest-path merkle-distributor/Cargo.toml
         env:
           RUST_BACKTRACE: 1
 
@@ -33,7 +33,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --target wasm32-unknown-unknown --locked
+          args: --locked --release --target wasm32-unknown-unknown --manifest-path merkle-distributor/Cargo.toml
         env:
           RUSTFLAGS: "-C link-arg=-s"
 
@@ -51,30 +51,43 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.63.0
+          toolchain: 1.69.0
           override: true
           components: rustfmt, clippy
 
-      - name: Run cargo fmt
+      - name: Distributor cargo fmt
         uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --all -- --check
+          args: --manifest-path merkle-distributor/Cargo.toml -- --check
 
-      - name: Run cargo clippy
+      - name: Distributor cargo clippy
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: -- -D warnings
+          args: --manifest-path merkle-distributor/Cargo.toml -- -D warnings
 
       - name: Generate distributor schema
         uses: actions-rs/cargo@v1
         with:
           command: schema
-          args: --locked -p merkle-distributor
+          args: --locked --manifest-path merkle-distributor/Cargo.toml
 
       - name: Generate snip20 schema
         uses: actions-rs/cargo@v1
         with:
           command: schema
-          args: --locked -p snip20-reference-impl
+          args: --locked --manifest-path snip20-reference-impl/Cargo.toml
+
+      - name: Migrator cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --manifest-path token-migrator/Cargo.toml -- --check
+
+      - name: Migrator cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --manifest-path token-migrator/Cargo.toml -- -D warnings
+

@@ -37,6 +37,9 @@ jobs:
         env:
           RUSTFLAGS: "-C link-arg=-s"
 
+      - name: Compress WASM
+        run: make compress-wasm
+
       - name: Run integration test
         run: make integration-test
 

@@ -5,7 +5,7 @@ import assert from "assert";
 import "dotenv/config";
 
 var mnemonic: string;
-var endpoint: string = "http://localhost:9091";
+var endpoint: string = "http://localhost:1317";
 var chainId: string = "secretdev-1";
 var ADMIN_ADDRESS: string;
 

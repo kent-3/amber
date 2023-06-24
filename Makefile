@@ -6,7 +6,7 @@ start-server: # CTRL+C to stop
 		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 -p 9091:9091 \
 		-v $$(pwd)/merkle-distributor:/root/code \
 		-v $$(pwd)/snip20-reference-impl:/root/secret-secret \
-		--name localsecret ghcr.io/scrtlabs/localsecret:v1.5.1
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.9.3
 
 .PHONY: start-server-detached
 start-server-detached:
@@ -14,7 +14,7 @@ start-server-detached:
 		-p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 -p 9091:9091 \
 		-v $$(pwd)/merkle-distributor:/root/code \
 		-v $$(pwd)/snip20-reference-impl:/root/secret-secret \
-		--name localsecret ghcr.io/scrtlabs/localsecret:v1.5.1
+		--name localsecret ghcr.io/scrtlabs/localsecret:v1.9.3
 
 .PHONY: list-code
 list-code:
@@ -64,8 +64,8 @@ build-mainnet-reproducible:
 
 .PHONY: compress-wasm
 compress-wasm:
-	cp ./target/wasm32-unknown-unknown/release/merkle_distributor.wasm ./merkle-distributor/contract.wasm
-	cp ./target/wasm32-unknown-unknown/release/snip20_reference_impl.wasm ./snip20-reference-impl/contract.wasm
+	cp ./merkle-distributor/target/wasm32-unknown-unknown/release/merkle_distributor.wasm ./merkle-distributor/contract.wasm
+	cp ./snip20-reference-impl/target/wasm32-unknown-unknown/release/snip20_reference_impl.wasm ./snip20-reference-impl/contract.wasm
 	@## The following line is not necessary, may work only on linux (extra size optimization)
 	wasm-opt -Os ./merkle-distributor/contract.wasm -o ./merkle-distributor/contract.wasm
 	wasm-opt -Os ./snip20-reference-impl/contract.wasm -o ./snip20-reference-impl/contract.wasm

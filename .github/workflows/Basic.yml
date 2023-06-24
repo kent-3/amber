@@ -37,6 +37,14 @@ jobs:
         env:
           RUSTFLAGS: "-C link-arg=-s"
 
+      - name: Compile WASM contract
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --locked --release --target wasm32-unknown-unknown --manifest-path snip20-reference-impl/Cargo.toml
+        env:
+          RUSTFLAGS: "-C link-arg=-s"
+
       - name: Compress WASM
         run: make compress-wasm
 

@@ -45,6 +45,9 @@ jobs:
         env:
           RUSTFLAGS: "-C link-arg=-s"
 
+      - name: Install wasm-opt
+        run: sudo apt update && sudo apt install -y binaryen clang
+        
       - name: Compress WASM
         run: make compress-wasm
 

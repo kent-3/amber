@@ -1,6 +1,6 @@
 # Based on https://github.com/scrtlabs/snip20-reference-impl/blob/master/.github/workflows/Basic.yml
 
-on: [push]
+on: workflow_dispatch
 
 name: Basic
 

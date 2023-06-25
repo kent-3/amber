@@ -252,17 +252,17 @@ async function initializeAndUploadContract() {
 
   const [snip20Hash, snip20Address] = await initializeSnip20(
     client,
-    "./tests/snip20.wasm.gz"
+    "./token-migrator/tests/snip20.wasm.gz"
   );
 
   const [snip25Hash, snip25Address] = await initializeSnip20(
     client,
-    "./tests/snip25.wasm.gz"
+    "./token-migrator/tests/snip25.wasm.gz"
   );
 
   const [migratorHash, migratorAddress] = await initializeMigratorContract(
     client,
-    "./contract.wasm.gz",
+    "./token-migrator/contract.wasm.gz",
     snip20Hash,
     snip20Address,
     snip25Hash,

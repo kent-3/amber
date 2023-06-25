@@ -93,9 +93,7 @@ jobs:
 
       - name: Build wasm contract (migrator)
         working-directory: token-migrator
-        run: |
-          rm -rf src/bin/ && \
-          make build-mainnet-reproducible
+        run: make build-mainnet-reproducible
 
       - name: Run integration tests
         run: |

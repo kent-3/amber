@@ -38,6 +38,3 @@ serde = { version = "1.0" }
 serde-json-wasm = { version = "0.5"}
 thiserror = { version = "1.0" }
 # cw-storage-plus = { version = "1", default-features = false, features = ["macro"] }
-
-[[bin]]
-name = "schema"

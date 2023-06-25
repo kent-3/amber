@@ -1,6 +1,6 @@
 name: Distributor Integration Test
 
-on: [push]
+on: workflow_dispatch
 
 jobs:
   merkle_distributor_tests:
@@ -77,19 +77,19 @@ jobs:
       - name: Start sccache server
         run: sccache --start-server
 
-      # - name: Run unit tests
-      #   run: make unit-test
-      #   continue-on-error: true
+      - name: Run unit tests
+        run: make unit-test
+        continue-on-error: true
 
-      # - name: Build wasm contract
-      #   run: make build-mainnet-reproducible
-      #   continue-on-error: false
+      - name: Build wasm contract
+        run: make build-mainnet-reproducible
+        continue-on-error: false
 
-      # - name: Run deploy-only test
-      #   run: npx ts-node deploy/token2testnet.ts
+      - name: Run deploy-only test
+        run: npx ts-node deploy/token2testnet.ts
 
-      # - name: Run integration tests
-      #   run: npx ts-node deploy/integration.ts
+      - name: Run integration tests
+        run: npx ts-node deploy/integration.ts
 
       - name: Build wasm contract (migrator)
         working-directory: token-migrator

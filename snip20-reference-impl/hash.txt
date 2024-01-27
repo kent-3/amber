@@ -1,1 +1,0 @@
-3dc18e23ce01e911d8dc50176179177e66eb4ffd212945ed471b3e269bab3de4  snip20-reference-impl/contract.wasm.gz

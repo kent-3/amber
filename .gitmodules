@@ -1,0 +1,9 @@
+[submodule "oac-bot"]
+	path = oac-bot
+	url = https://github.com/kent-3/oac-bot.git
+[submodule "amber-app"]
+	path = amber-app
+	url = https://github.com/kent-3/amber-app.git
+[submodule "amber-website"]
+	path = amber-website
+	url = https://github.com/kent-3/amber-website.git

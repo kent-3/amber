@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "QueryMsg",
-  "anyOf": [
+  "oneOf": [
     {
       "type": "object",
       "required": [
@@ -11,7 +11,8 @@
         "token_info": {
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -22,7 +23,8 @@
         "token_config": {
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -33,7 +35,8 @@
         "contract_status": {
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -44,7 +47,8 @@
         "exchange_rate": {
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -64,14 +68,91 @@
               "type": "string"
             },
             "owner": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             },
             "spender": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "allowances_given"
+      ],
+      "properties": {
+        "allowances_given": {
+          "type": "object",
+          "required": [
+            "key",
+            "owner",
+            "page_size"
+          ],
+          "properties": {
+            "key": {
+              "type": "string"
+            },
+            "owner": {
+              "type": "string"
+            },
+            "page": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "page_size": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "allowances_received"
+      ],
+      "properties": {
+        "allowances_received": {
+          "type": "object",
+          "required": [
+            "key",
+            "page_size",
+            "spender"
+          ],
+          "properties": {
+            "key": {
+              "type": "string"
+            },
+            "page": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "page_size": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "spender": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -87,14 +168,15 @@
           ],
           "properties": {
             "address": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             },
             "key": {
               "type": "string"
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -107,11 +189,12 @@
           "required": [
             "address",
             "key",
-            "page_size"
+            "page_size",
+            "should_filter_decoys"
           ],
           "properties": {
             "address": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             },
             "key": {
               "type": "string"
@@ -128,10 +211,14 @@
               "type": "integer",
               "format": "uint32",
               "minimum": 0.0
+            },
+            "should_filter_decoys": {
+              "type": "boolean"
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -144,11 +231,12 @@
           "required": [
             "address",
             "key",
-            "page_size"
+            "page_size",
+            "should_filter_decoys"
           ],
           "properties": {
             "address": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             },
             "key": {
               "type": "string"
@@ -165,10 +253,14 @@
               "type": "integer",
               "format": "uint32",
               "minimum": 0.0
+            },
+            "should_filter_decoys": {
+              "type": "boolean"
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -179,7 +271,8 @@
         "minters": {
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -195,49 +288,23 @@
           ],
           "properties": {
             "permit": {
-              "$ref": "#/definitions/Permit"
+              "$ref": "#/definitions/Permit_for_TokenPermissions"
             },
             "query": {
               "$ref": "#/definitions/QueryWithPermit"
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
     "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
       "type": "string"
     },
-    "HumanAddr": {
-      "type": "string"
-    },
-    "Permission": {
-      "type": "string",
-      "enum": [
-        "allowance",
-        "balance",
-        "history",
-        "owner"
-      ]
-    },
-    "Permit": {
-      "type": "object",
-      "required": [
-        "params",
-        "signature"
-      ],
-      "properties": {
-        "params": {
-          "$ref": "#/definitions/PermitParams"
-        },
-        "signature": {
-          "$ref": "#/definitions/PermitSignature"
-        }
-      }
-    },
-    "PermitParams": {
+    "PermitParams_for_TokenPermissions": {
       "type": "object",
       "required": [
         "allowed_tokens",
@@ -249,7 +316,7 @@
         "allowed_tokens": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/HumanAddr"
+            "type": "string"
           }
         },
         "chain_id": {
@@ -258,7 +325,7 @@
         "permissions": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Permission"
+            "$ref": "#/definitions/TokenPermissions"
           }
         },
         "permit_name": {
@@ -278,6 +345,21 @@
         },
         "signature": {
           "$ref": "#/definitions/Binary"
+        }
+      }
+    },
+    "Permit_for_TokenPermissions": {
+      "type": "object",
+      "required": [
+        "params",
+        "signature"
+      ],
+      "properties": {
+        "params": {
+          "$ref": "#/definitions/PermitParams_for_TokenPermissions"
+        },
+        "signature": {
+          "$ref": "#/definitions/PermitSignature"
         }
       }
     },
@@ -303,7 +385,7 @@
       }
     },
     "QueryWithPermit": {
-      "anyOf": [
+      "oneOf": [
         {
           "type": "object",
           "required": [
@@ -318,14 +400,83 @@
               ],
               "properties": {
                 "owner": {
-                  "$ref": "#/definitions/HumanAddr"
+                  "type": "string"
                 },
                 "spender": {
-                  "$ref": "#/definitions/HumanAddr"
+                  "type": "string"
                 }
               }
             }
-          }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "allowances_given"
+          ],
+          "properties": {
+            "allowances_given": {
+              "type": "object",
+              "required": [
+                "owner",
+                "page_size"
+              ],
+              "properties": {
+                "owner": {
+                  "type": "string"
+                },
+                "page": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "page_size": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "allowances_received"
+          ],
+          "properties": {
+            "allowances_received": {
+              "type": "object",
+              "required": [
+                "page_size",
+                "spender"
+              ],
+              "properties": {
+                "page": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "page_size": {
+                  "type": "integer",
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "spender": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -336,7 +487,8 @@
             "balance": {
               "type": "object"
             }
-          }
+          },
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -347,7 +499,8 @@
             "transfer_history": {
               "type": "object",
               "required": [
-                "page_size"
+                "page_size",
+                "should_filter_decoys"
               ],
               "properties": {
                 "page": {
@@ -362,10 +515,14 @@
                   "type": "integer",
                   "format": "uint32",
                   "minimum": 0.0
+                },
+                "should_filter_decoys": {
+                  "type": "boolean"
                 }
               }
             }
-          }
+          },
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -376,7 +533,8 @@
             "transaction_history": {
               "type": "object",
               "required": [
-                "page_size"
+                "page_size",
+                "should_filter_decoys"
               ],
               "properties": {
                 "page": {
@@ -391,10 +549,46 @@
                   "type": "integer",
                   "format": "uint32",
                   "minimum": 0.0
+                },
+                "should_filter_decoys": {
+                  "type": "boolean"
                 }
               }
             }
-          }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "TokenPermissions": {
+      "oneOf": [
+        {
+          "description": "Allowance for SNIP-20 - Permission to query allowance of the owner & spender",
+          "type": "string",
+          "enum": [
+            "allowance"
+          ]
+        },
+        {
+          "description": "Balance for SNIP-20 - Permission to query balance",
+          "type": "string",
+          "enum": [
+            "balance"
+          ]
+        },
+        {
+          "description": "History for SNIP-20 - Permission to query transfer_history & transaction_hisotry",
+          "type": "string",
+          "enum": [
+            "history"
+          ]
+        },
+        {
+          "description": "Owner permission indicates that the bearer of this permit should be granted all the access of the creator/signer of the permit.  SNIP-721 uses this to grant viewing access to all data that the permit creator owns and is whitelisted for. For SNIP-721 use, a permit with Owner permission should NEVER be given to anyone else.  If someone wants to share private data, they should whitelist the address they want to share with via a SetWhitelistedApproval tx, and that address will view the data by creating their own permit with Owner permission",
+          "type": "string",
+          "enum": [
+            "owner"
+          ]
         }
       ]
     }

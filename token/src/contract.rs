@@ -8,7 +8,7 @@ use rand::RngCore;
 use secret_toolkit::permit::{Permit, RevokedPermits, TokenPermissions};
 use secret_toolkit::utils::{pad_handle_result, pad_query_result};
 use secret_toolkit::viewing_key::{ViewingKey, ViewingKeyStore};
-use secret_toolkit_crypto::{sha_256, Prng, SHA256_HASH_SIZE};
+use secret_toolkit_crypto::{sha_256, ContractPrng, SHA256_HASH_SIZE};
 
 use crate::batch;
 use crate::msg::{
@@ -142,7 +142,7 @@ fn get_address_position(
     decoys_size: usize,
     entropy: &[u8; SHA256_HASH_SIZE],
 ) -> StdResult<usize> {
-    let mut rng = Prng::new(&PrngStore::load(store)?, entropy);
+    let mut rng = ContractPrng::new(&PrngStore::load(store)?, entropy);
 
     let mut new_contract_entropy = [0u8; 20];
     rng.rng.fill_bytes(&mut new_contract_entropy);

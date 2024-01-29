@@ -799,6 +799,7 @@ name = "snip20-reference-impl"
 version = "1.0.0"
 dependencies = [
  "base64 0.21.7",
+ "bincode2",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",

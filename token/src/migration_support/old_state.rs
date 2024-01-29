@@ -1,16 +1,18 @@
 use std::any::type_name;
 use std::convert::TryFrom;
 
-use cosmwasm_std::{CanonicalAddr, HumanAddr, ReadonlyStorage, StdError, StdResult, Storage};
-use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
-
+use super::addresses::HumanAddr;
+use super::prefixed_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
+use super::traits::ReadonlyStorage;
 use super::typed_store::{TypedStore, TypedStoreMut};
+
+use cosmwasm_std::{CanonicalAddr, StdError, StdResult, Storage};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::msg::{status_level_to_u8, u8_to_status_level, ContractStatusLevel};
-use crate::viewing_key::ViewingKey;
+use secret_toolkit::viewing_key::ViewingKey;
 use serde::de::DeserializeOwned;
 
 pub static CONFIG_KEY: &[u8] = b"config";

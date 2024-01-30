@@ -1,6 +1,5 @@
 mod addresses;
-mod length_prefixed;
-mod namespace_helpers;
+mod append_store;
 pub mod old_state;
-mod rand;
+mod transaction_history;
 mod typed_store;

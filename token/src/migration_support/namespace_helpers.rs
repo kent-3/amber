@@ -1,6 +1,6 @@
-use super::traits::{ReadonlyStorage, Storage};
+use cosmwasm_std::Storage;
 
-pub(crate) fn get_with_prefix<S: ReadonlyStorage>(
+pub(crate) fn get_with_prefix<S: Storage>(
     storage: &S,
     namespace: &[u8],
     key: &[u8],

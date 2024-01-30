@@ -3,9 +3,9 @@ use std::marker::PhantomData;
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use cosmwasm_std::{ReadonlyStorage, StdError, StdResult, Storage};
+use cosmwasm_std::{StdError, StdResult, Storage};
 
-use secret_toolkit_serialization::{Bincode2, Serde};
+use secret_toolkit::serialization::{Bincode2, Serde};
 
 pub struct TypedStoreMut<'a, T, S, Ser = Bincode2>
 where
@@ -71,7 +71,7 @@ where
 pub struct TypedStore<'a, T, S, Ser = Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
     Ser: Serde,
 {
     storage: &'a S,
@@ -82,7 +82,7 @@ where
 impl<'a, T, S> TypedStore<'a, T, S, Bincode2>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
 {
     pub fn attach(storage: &'a S) -> Self {
         Self::attach_with_serialization(storage, Bincode2)
@@ -92,7 +92,7 @@ where
 impl<'a, T, S, Ser> TypedStore<'a, T, S, Ser>
 where
     T: Serialize + DeserializeOwned,
-    S: ReadonlyStorage,
+    S: Storage,
     Ser: Serde,
 {
     pub fn attach_with_serialization(storage: &'a S, _serialization: Ser) -> Self {

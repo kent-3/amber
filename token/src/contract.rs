@@ -1,8 +1,8 @@
 /// This contract implements SNIP-20 standard:
 /// https://github.com/SecretFoundation/SNIPs/blob/master/SNIP-20.md
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, StdError, StdResult, Storage, Uint128,
+    entry_point, to_binary, Addr, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Deps, DepsMut,
+    Env, MessageInfo, Response, StdError, StdResult, Storage, Uint128,
 };
 use rand::RngCore;
 use secret_toolkit::permit::{Permit, RevokedPermits, TokenPermissions};
@@ -13,21 +13,73 @@ use secret_toolkit_crypto::{sha_256, ContractPrng, SHA256_HASH_SIZE};
 use crate::batch;
 use crate::msg::{
     AllowanceGivenResult, AllowanceReceivedResult, ContractStatusLevel, Decoyable, ExecuteAnswer,
-    ExecuteMsg, InstantiateMsg, QueryAnswer, QueryMsg, QueryWithPermit, ResponseStatus::Success,
+    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryAnswer, QueryMsg, QueryWithPermit,
+    ResponseStatus::Success,
 };
 use crate::receiver::Snip20ReceiveMsg;
 use crate::state::{
     safe_add, AllowancesStore, BalancesStore, Config, MintersStore, PrngStore, ReceiverHashStore,
-    CONFIG, CONTRACT_STATUS, TOTAL_SUPPLY,
+    BALANCES, CONFIG, CONTRACT_STATUS, MINTERS, TOTAL_SUPPLY, TX_COUNT,
 };
 use crate::transaction_history::{
     store_burn, store_deposit, store_mint, store_redeem, store_transfer, StoredExtendedTx,
     StoredLegacyTransfer,
 };
 
+use crate::migration_support::old_state::{Balances as OldBalances, Config as OldConfig};
+
 /// We make sure that responses from `handle` are padded to a multiple of this size.
 pub const RESPONSE_BLOCK_SIZE: usize = 256;
 pub const PREFIX_REVOKED_PERMITS: &str = "revoked_permits";
+
+#[entry_point]
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> StdResult<Response> {
+    match msg {
+        MigrateMsg::Migrate {} => {
+            let old_config = OldConfig::from_storage(deps.storage);
+
+            // let supported_denoms = match msg.supported_denoms {
+            //     None => vec![],
+            //     Some(x) => x,
+            // };
+
+            let constants = old_config.constants()?;
+            let new_config = Config {
+                name: constants.name,
+                admin: deps.api.addr_validate(constants.admin.as_str())?,
+                symbol: constants.symbol,
+                decimals: constants.decimals,
+                total_supply_is_public: constants.total_supply_is_public,
+                deposit_is_enabled: constants.deposit_is_enabled,
+                redeem_is_enabled: constants.redeem_is_enabled,
+                mint_is_enabled: constants.mint_is_enabled,
+                burn_is_enabled: constants.burn_is_enabled,
+                contract_address: deps
+                    .api
+                    .addr_validate(constants.contract_address.as_str())?,
+                supported_denoms: vec![],
+                can_modify_denoms: true,
+            };
+
+            let total_supply = old_config.total_supply();
+            let contract_status = old_config.contract_status();
+            let minters = old_config.minters();
+            let minters = minters
+                .iter()
+                .map(|addr| Addr::unchecked(addr.as_str()))
+                .collect();
+            let tx_count = old_config.tx_count();
+
+            CONFIG.save(deps.storage, &new_config)?;
+            CONTRACT_STATUS.save(deps.storage, &contract_status)?;
+            TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
+            MINTERS.save(deps.storage, &minters)?;
+            TX_COUNT.save(deps.storage, &tx_count)?;
+
+            Ok(Response::default())
+        }
+    }
+}
 
 #[entry_point]
 pub fn instantiate(
@@ -371,6 +423,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::RemoveSupportedDenoms { denoms, .. } => {
             remove_supported_denoms(deps, info, denoms)
         }
+        ExecuteMsg::Migrate {} => try_migrate(deps, env, info),
     };
 
     pad_handle_result(response, RESPONSE_BLOCK_SIZE)
@@ -707,6 +760,26 @@ fn query_minters(deps: Deps) -> StdResult<Binary> {
 
     let response = QueryAnswer::Minters { minters };
     to_binary(&response)
+}
+
+pub fn try_migrate(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
+    let account = deps.api.addr_canonicalize(info.sender.as_str())?;
+    let mut old_balances =
+        crate::migration_support::old_state::Balances::from_storage(deps.storage);
+    let balance = old_balances.balance(&account);
+    old_balances.set_account_balance(&account, 0);
+
+    BalancesStore::update_balance(
+        deps.storage,
+        &info.sender,
+        balance,
+        true,
+        "migrate",
+        &None,
+        &None,
+    )?;
+
+    Ok(Response::new().set_data(to_binary(&ExecuteAnswer::ChangeAdmin { status: Success })?))
 }
 
 fn change_admin(deps: DepsMut, info: MessageInfo, address: String) -> StdResult<Response> {
@@ -2053,15 +2126,6 @@ fn is_valid_symbol(symbol: &str) -> bool {
 
     len_is_valid && symbol.bytes().all(|byte| byte.is_ascii_alphabetic())
 }
-
-// pub fn migrate(
-//     _deps: DepsMut,
-//     _env: Env,
-//     _msg: MigrateMsg,
-// ) -> StdResult<MigrateResponse> {
-//     Ok(MigrateResponse::default())
-//     Ok(MigrateResponse::default())
-// }
 
 #[cfg(test)]
 mod tests {

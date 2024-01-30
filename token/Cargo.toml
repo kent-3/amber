@@ -48,6 +48,9 @@ schemars = "0.8.16"
 serde = { version = "1.0.196", default-features = false, features = ["derive"] }
 base64 = "0.21.7"
 bincode2 = "2.0.1"
+rand_chacha = { version = "0.2.2", default-features = false }
+rand_core = { version = "0.5.1", default-features = false }
+sha2 = { version = "0.9.1", default-features = false }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.5.2" }

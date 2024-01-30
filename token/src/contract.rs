@@ -1,8 +1,8 @@
 /// This contract implements SNIP-20 standard:
 /// https://github.com/SecretFoundation/SNIPs/blob/master/SNIP-20.md
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Deps, DepsMut,
-    Env, MessageInfo, Response, StdError, StdResult, Storage, Uint128,
+    entry_point, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, StdError, StdResult, Storage, Uint128,
 };
 use rand::RngCore;
 use secret_toolkit::permit::{Permit, RevokedPermits, TokenPermissions};
@@ -19,7 +19,7 @@ use crate::msg::{
 use crate::receiver::Snip20ReceiveMsg;
 use crate::state::{
     safe_add, AllowancesStore, BalancesStore, Config, MintersStore, PrngStore, ReceiverHashStore,
-    BALANCES, CONFIG, CONTRACT_STATUS, MINTERS, TOTAL_SUPPLY, TX_COUNT,
+    CONFIG, CONTRACT_STATUS, MINTERS, TOTAL_SUPPLY, TX_COUNT,
 };
 use crate::transaction_history::{
     store_burn, store_deposit, store_mint, store_redeem, store_transfer, StoredExtendedTx,
@@ -33,15 +33,22 @@ pub const RESPONSE_BLOCK_SIZE: usize = 256;
 pub const PREFIX_REVOKED_PERMITS: &str = "revoked_permits";
 
 #[entry_point]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> StdResult<Response> {
+pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> StdResult<Response> {
     match msg {
         MigrateMsg::Migrate {} => {
             let old_config = OldConfig::from_storage(deps.storage);
 
+            // TODO - inclue this in the migrate message?
             // let supported_denoms = match msg.supported_denoms {
             //     None => vec![],
             //     Some(x) => x,
             // };
+
+            // TODO - store this to use to distinguish between storage access types
+            // any queries before this block height should use the old storage access
+            let block = env.block.height;
+
+            // TODO - migrate viewing key store?
 
             let constants = old_config.constants()?;
             let new_config = Config {
@@ -762,7 +769,7 @@ fn query_minters(deps: Deps) -> StdResult<Binary> {
     to_binary(&response)
 }
 
-pub fn try_migrate(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
+pub fn try_migrate(deps: DepsMut, _env: Env, info: MessageInfo) -> StdResult<Response> {
     let account = deps.api.addr_canonicalize(info.sender.as_str())?;
     let mut old_balances =
         crate::migration_support::old_state::Balances::from_storage(deps.storage);
@@ -779,6 +786,7 @@ pub fn try_migrate(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Resp
         &None,
     )?;
 
+    // TODO - make a new answer variant
     Ok(Response::new().set_data(to_binary(&ExecuteAnswer::ChangeAdmin { status: Success })?))
 }
 

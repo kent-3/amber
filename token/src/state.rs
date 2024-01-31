@@ -2,6 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, CanonicalAddr, StdError, StdResult, Storage};
+use cosmwasm_storage::to_length_prefixed;
 use secret_toolkit::serialization::Json;
 use secret_toolkit::storage::{Item, Keymap, Keyset};
 use secret_toolkit_crypto::SHA256_HASH_SIZE;
@@ -15,12 +16,12 @@ pub const KEY_PRNG: &[u8] = b"prng";
 pub const KEY_MINTERS: &[u8] = b"minters";
 pub const KEY_TX_COUNT: &[u8] = b"tx-count";
 
-pub const PREFIX_CONFIG: &[u8] = b"\x00\x06config";
-pub const PREFIX_BALANCES: &[u8] = b"\x00\x08balances";
+pub const PREFIX_CONFIG: &[u8] = b"config";
+pub const PREFIX_BALANCES: &[u8] = b"balances";
 pub const PREFIX_ALLOWANCES: &[u8] = b"allowances";
 pub const PREFIX_ALLOWED: &[u8] = b"allowed";
-pub const PREFIX_VIEW_KEY: &[u8] = b"\x00\x0aviewingkey";
-pub const PREFIX_RECEIVERS: &[u8] = b"\x00\x09receivers";
+pub const PREFIX_VIEW_KEY: &[u8] = b"viewingkey";
+pub const PREFIX_RECEIVERS: &[u8] = b"receivers";
 
 // Config
 

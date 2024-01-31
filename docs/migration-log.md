@@ -82,3 +82,44 @@ secretcli tx compute migrate secret1yy7yuk8tnqznw7tltw9mzyjfwetj9xqg7fyn02 3501 
 ```
 
 Balance works! But currently requires a separate execute message to update it.
+
+I still need to look at migrating viewing keys, tx history, allowances...
+
+    ### Note about keys
+
+    old (account is CanonicalAddr):
+
+    ```rust
+    key = [to_length_prefixed(b"balances") + account.as_slice()].concat();
+    ```
+
+    new (account is Addr):
+
+    ```rust
+    key = [to_length_prefixed(account.as_str().as_bytes()), b"balances"].concat();
+    ```
+
+Modify the token code and try again.
+
+> code_id: 3531
+
+Try migrating again.
+
+```
+secretcli tx compute migrate secret1yy7yuk8tnqznw7tltw9mzyjfwetj9xqg7fyn02 3531 '{ "migrate": {} }' --from pulsar
+```
+
+Testing reusing old viewing key and balance stores.
+
+> code_id: 3586
+
+```
+JSON='{ "name": "Amber", "admin": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "symbol": "AMBER", "decimals": 6, "initial_balances": [ { "address": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "amount": "8888000000" } ], "prng_seed": "YW1iZXIgcm9ja3M=", "config": { "public_total_supply": true, "enable_deposit": false, "enable_redeem": false, "enable_mint": false, "enable_burn": false } }'
+secretcli tx compute instantiate 3389 $JSON --label "amber563 with admin 3" --from pulsar --admin secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj
+```
+
+> contract_address: secret1rngq8jlggqwz4pvvn2c2sjl8fus79meg4k7uyj
+
+```
+secretcli tx compute migrate secret1rngq8jlggqwz4pvvn2c2sjl8fus79meg4k7uyj 3586 '{ "migrate": {} }' --from pulsar
+```

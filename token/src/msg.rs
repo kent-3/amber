@@ -438,6 +438,9 @@ pub enum ExecuteAnswer {
     RemoveSupportedDenoms {
         status: ResponseStatus,
     },
+    Migrate {
+        status: ResponseStatus,
+    },
 
     // Permit
     RevokePermit {

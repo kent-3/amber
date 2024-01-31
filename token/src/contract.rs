@@ -1,20 +1,23 @@
 /// This contract implements SNIP-20 standard:
 /// https://github.com/SecretFoundation/SNIPs/blob/master/SNIP-20.md
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Response, StdError, StdResult, Storage, Uint128,
+    entry_point, to_binary, Addr, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Deps, DepsMut,
+    Env, MessageInfo, Response, StdError, StdResult, Storage, Uint128,
 };
+use cosmwasm_storage::{prefixed_read, to_length_prefixed};
 use rand::RngCore;
+use subtle::ConstantTimeEq;
+
 use secret_toolkit::permit::{Permit, RevokedPermits, TokenPermissions};
 use secret_toolkit::utils::{pad_handle_result, pad_query_result};
-use secret_toolkit::viewing_key::{ViewingKey, ViewingKeyStore};
+use secret_toolkit::viewing_key::{ViewingKey, ViewingKeyStore, VIEWING_KEY_SIZE};
 use secret_toolkit_crypto::{sha_256, ContractPrng, SHA256_HASH_SIZE};
 
 use crate::batch;
 use crate::msg::{
     AllowanceGivenResult, AllowanceReceivedResult, ContractStatusLevel, Decoyable, ExecuteAnswer,
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryAnswer, QueryMsg, QueryWithPermit,
-    ResponseStatus::Success,
+    ResponseStatus::Failure, ResponseStatus::Success,
 };
 use crate::receiver::Snip20ReceiveMsg;
 use crate::state::{
@@ -43,12 +46,6 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> StdResult<Response> 
             //     None => vec![],
             //     Some(x) => x,
             // };
-
-            // TODO - store this to use to distinguish between storage access types
-            // any queries before this block height should use the old storage access
-            let block = env.block.height;
-
-            // TODO - migrate viewing key store?
 
             let constants = old_config.constants()?;
             let new_config = Config {
@@ -82,6 +79,13 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> StdResult<Response> 
             TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
             MINTERS.save(deps.storage, &minters)?;
             TX_COUNT.save(deps.storage, &tx_count)?;
+
+            // TODO - store this to use to distinguish between storage access types
+            // any queries before this block height should use the old storage access
+            let block = env.block.height;
+
+            // TODO - migrate viewing key store?
+            // TODO - migrate balances
 
             Ok(Response::default())
         }
@@ -580,12 +584,37 @@ fn permit_queries(deps: Deps, permit: Permit, query: QueryWithPermit) -> Result<
     }
 }
 
+/// Check if a viewing key matches an OG account.
+fn check_og_vk(storage: &dyn Storage, account: &CanonicalAddr, viewing_key: &str) -> StdResult<()> {
+    let balance_store = prefixed_read(storage, b"viewingkey");
+    let expected_hash = balance_store.get(account.as_slice());
+    let expected_hash = match &expected_hash {
+        Some(hash) => hash.as_slice(),
+        None => &[0u8; VIEWING_KEY_SIZE],
+    };
+    // TODO - check that this works exactly the same way as the original version
+    let key_hash = sha_256(viewing_key.as_bytes());
+    if ct_slice_compare(&key_hash, expected_hash) {
+        Ok(())
+    } else {
+        Err(StdError::generic_err("unauthorized"))
+    }
+}
+
+fn ct_slice_compare(s1: &[u8], s2: &[u8]) -> bool {
+    bool::from(s1.ct_eq(s2))
+}
+
 pub fn viewing_keys_queries(deps: Deps, msg: QueryMsg) -> StdResult<Binary> {
     let (addresses, key) = msg.get_validation_params(deps.api)?;
 
     for address in addresses {
-        let result = ViewingKey::check(deps.storage, address.as_str(), key.as_str());
-        if result.is_ok() {
+        let canonical_addr = deps.api.addr_canonicalize(address.as_str())?;
+        let result1 = check_og_vk(deps.storage, &canonical_addr, key.as_str());
+        let result2 = result1.is_err()
+            && ViewingKey::check(deps.storage, address.as_str(), key.as_str()).is_ok();
+
+        if result1.is_ok() || result2 {
             return match msg {
                 // Base
                 QueryMsg::Balance { address, .. } => query_balance(deps, address),
@@ -757,6 +786,18 @@ pub fn query_balance(deps: Deps, account: String) -> StdResult<Binary> {
     // call, for compatibility with non-Secret addresses.
     let account = Addr::unchecked(account);
 
+    // ------------------------------- //
+    let og_account = deps.api.addr_canonicalize(account.as_str())?;
+    let og_balance_key = [b"\x00\x08balances", og_account.as_slice()].concat();
+
+    if let Some(balance_bytes) = &deps.storage.get(&og_balance_key) {
+        let balance = slice_to_u128(&balance_bytes).unwrap();
+        let amount = Uint128::new(balance);
+        let response = QueryAnswer::Balance { amount };
+        return to_binary(&response);
+    }
+    // ------------------------------- //
+
     let amount = Uint128::new(BalancesStore::load(deps.storage, &account));
     let response = QueryAnswer::Balance { amount };
     to_binary(&response)
@@ -767,27 +808,6 @@ fn query_minters(deps: Deps) -> StdResult<Binary> {
 
     let response = QueryAnswer::Minters { minters };
     to_binary(&response)
-}
-
-pub fn try_migrate(deps: DepsMut, _env: Env, info: MessageInfo) -> StdResult<Response> {
-    let account = deps.api.addr_canonicalize(info.sender.as_str())?;
-    let mut old_balances =
-        crate::migration_support::old_state::Balances::from_storage(deps.storage);
-    let balance = old_balances.balance(&account);
-    old_balances.set_account_balance(&account, 0);
-
-    BalancesStore::update_balance(
-        deps.storage,
-        &info.sender,
-        balance,
-        true,
-        "migrate",
-        &None,
-        &None,
-    )?;
-
-    // TODO - make a new answer variant
-    Ok(Response::new().set_data(to_binary(&ExecuteAnswer::ChangeAdmin { status: Success })?))
 }
 
 fn change_admin(deps: DepsMut, info: MessageInfo, address: String) -> StdResult<Response> {
@@ -992,21 +1012,25 @@ fn try_batch_mint(
     Ok(Response::new().set_data(to_binary(&ExecuteAnswer::BatchMint { status: Success })?))
 }
 
-pub fn try_set_key(deps: DepsMut, info: MessageInfo, key: String) -> StdResult<Response> {
+// is it ok to mutate the deps like this?
+pub fn try_set_key(mut deps: DepsMut, info: MessageInfo, key: String) -> StdResult<Response> {
+    // otherwise it would move here
+    let migrated = try_migrate_account_balance(&mut deps, &info)?;
     ViewingKey::set(deps.storage, info.sender.as_str(), key.as_str());
-    Ok(
-        Response::new().set_data(to_binary(&ExecuteAnswer::SetViewingKey {
+    Ok(Response::new()
+        .set_data(to_binary(&ExecuteAnswer::SetViewingKey {
             status: Success,
-        })?),
-    )
+        })?)
+        .add_attribute("migrated", migrated.to_string()))
 }
 
 pub fn try_create_key(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     entropy: String,
 ) -> StdResult<Response> {
+    let migrated = try_migrate_account_balance(&mut deps, &info)?;
     let key = ViewingKey::create(
         deps.storage,
         &info,
@@ -1015,7 +1039,9 @@ pub fn try_create_key(
         entropy.as_ref(),
     );
 
-    Ok(Response::new().set_data(to_binary(&ExecuteAnswer::CreateViewingKey { key })?))
+    Ok(Response::new()
+        .set_data(to_binary(&ExecuteAnswer::CreateViewingKey { key })?)
+        .add_attribute("migrated", migrated.to_string()))
 }
 
 fn set_contract_status(
@@ -2133,6 +2159,74 @@ fn is_valid_symbol(symbol: &str) -> bool {
     let len_is_valid = (3..=20).contains(&len);
 
     len_is_valid && symbol.bytes().all(|byte| byte.is_ascii_alphabetic())
+}
+
+pub fn try_migrate(deps: DepsMut, _env: Env, info: MessageInfo) -> StdResult<Response> {
+    let canonical_addr = &deps.api.addr_canonicalize(info.sender.as_str())?;
+    let addr = &info.sender;
+
+    let old_balance_key = [b"\x00\x08balances", canonical_addr.as_slice()].concat();
+    let old_vk_store_key = [b"\x00\x0aviewingkey", canonical_addr.as_slice()].concat();
+    let old_allowance_key = [b"\x00\x0aallowances", canonical_addr.as_slice()].concat();
+    let old_transfers_key = [b"\x00\x09transfers", canonical_addr.as_slice()].concat();
+
+    if let Some(raw_balance) = &deps.storage.get(&old_balance_key) {
+        let balance = bincode2::deserialize::<u128>(&raw_balance).unwrap_or_default();
+        BalancesStore::update_balance(
+            deps.storage,
+            &info.sender,
+            balance,
+            true,
+            "migrate",
+            &None,
+            &None,
+        )?;
+        deps.storage.remove(&old_balance_key);
+    }
+
+    if let Some(raw_key_hash) = &deps.storage.get(&old_vk_store_key) {
+        // is this safe?
+        let new_vk_store_key = [b"\x00\x0cviewing_keys", addr.as_bytes()].concat();
+        deps.storage.set(&new_vk_store_key, &raw_key_hash);
+        deps.storage.remove(&old_vk_store_key);
+    }
+
+    Ok(Response::new().set_data(to_binary(&ExecuteAnswer::Migrate { status: Success })?))
+}
+
+fn try_migrate_account_balance(deps: &mut DepsMut, info: &MessageInfo) -> StdResult<bool> {
+    let canonical_account = deps.api.addr_canonicalize(info.sender.as_str())?;
+    let original_key = [b"\x00\x08balances", canonical_account.as_slice()].concat();
+
+    if let Some(raw_balance) = &deps.storage.get(&original_key) {
+        let balance = bincode2::deserialize::<u128>(&raw_balance).unwrap_or_default();
+        BalancesStore::update_balance(
+            deps.storage,
+            &info.sender,
+            balance,
+            true,
+            "migrate",
+            &None,
+            &None,
+        )?;
+        deps.storage.remove(&original_key);
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+// Helpers
+
+/// Converts 16 bytes value into u128
+/// Errors if data found that is not 16 bytes
+fn slice_to_u128(data: &[u8]) -> StdResult<u128> {
+    match <[u8; 16]>::try_from(data) {
+        Ok(bytes) => Ok(u128::from_be_bytes(bytes)),
+        Err(_) => Err(StdError::generic_err(
+            "Corrupted data found. 16 byte expected.",
+        )),
+    }
 }
 
 #[cfg(test)]

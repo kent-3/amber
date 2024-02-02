@@ -1,54 +1,49 @@
 /// This contract implements SNIP-20 standard:
 /// https://github.com/SecretFoundation/SNIPs/blob/master/SNIP-20.md
-use cosmwasm_std::{
-    entry_point, to_binary, Addr, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Deps, DepsMut,
-    Env, MessageInfo, Response, StdError, StdResult, Storage, Uint128,
-};
-use cosmwasm_storage::{prefixed_read, to_length_prefixed};
 use rand::RngCore;
-use subtle::ConstantTimeEq;
+// use subtle::ConstantTimeEq;
+
+use cosmwasm_std::{
+    entry_point, to_binary, Addr, Api, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Deps,
+    DepsMut, Env, MessageInfo, Response, StdError, StdResult, Storage, Uint128,
+};
+// use cosmwasm_storage::prefixed_read;
 
 use secret_toolkit::permit::{Permit, RevokedPermits, TokenPermissions};
 use secret_toolkit::utils::{pad_handle_result, pad_query_result};
-use secret_toolkit::viewing_key::{ViewingKey, ViewingKeyStore, VIEWING_KEY_SIZE};
 use secret_toolkit_crypto::{sha_256, ContractPrng, SHA256_HASH_SIZE};
 
 use crate::batch;
+use crate::migration_support::old_state::Config as OldConfig;
+use crate::migration_support::viewing_key::{ViewingKey, ViewingKeyStore};
 use crate::msg::{
     AllowanceGivenResult, AllowanceReceivedResult, ContractStatusLevel, Decoyable, ExecuteAnswer,
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryAnswer, QueryMsg, QueryWithPermit,
-    ResponseStatus::Failure, ResponseStatus::Success,
+    ResponseStatus::Success,
 };
 use crate::receiver::Snip20ReceiveMsg;
 use crate::state::{
     safe_add, AllowancesStore, BalancesStore, Config, MintersStore, PrngStore, ReceiverHashStore,
-    CONFIG, CONTRACT_STATUS, MINTERS, TOTAL_SUPPLY, TX_COUNT,
+    CONFIG, CONTRACT_STATUS, MINTERS, PRNG, TOTAL_SUPPLY, TX_COUNT,
 };
 use crate::transaction_history::{
     store_burn, store_deposit, store_mint, store_redeem, store_transfer, StoredExtendedTx,
     StoredLegacyTransfer,
 };
 
-use crate::migration_support::old_state::{Balances as OldBalances, Config as OldConfig};
-
 /// We make sure that responses from `handle` are padded to a multiple of this size.
 pub const RESPONSE_BLOCK_SIZE: usize = 256;
 pub const PREFIX_REVOKED_PERMITS: &str = "revoked_permits";
 
 #[entry_point]
-pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> StdResult<Response> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> StdResult<Response> {
     match msg {
+        // TODO - don't migrate any data... modify state.rs to match the original Config, etc
         MigrateMsg::Migrate {} => {
             let old_config = OldConfig::from_storage(deps.storage);
-
-            // TODO - inclue this in the migrate message?
-            // let supported_denoms = match msg.supported_denoms {
-            //     None => vec![],
-            //     Some(x) => x,
-            // };
-
             let constants = old_config.constants()?;
-            let new_config = Config {
+
+            let config = Config {
                 name: constants.name,
                 admin: deps.api.addr_validate(constants.admin.as_str())?,
                 symbol: constants.symbol,
@@ -64,9 +59,13 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> StdResult<Response> 
                 supported_denoms: vec![],
                 can_modify_denoms: true,
             };
-
             let total_supply = old_config.total_supply();
             let contract_status = old_config.contract_status();
+            let prng_seed = constants
+                .prng_seed
+                .as_slice()
+                .try_into()
+                .expect("seed was not 32 bytes");
             let minters = old_config.minters();
             let minters = minters
                 .iter()
@@ -74,18 +73,12 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> StdResult<Response> 
                 .collect();
             let tx_count = old_config.tx_count();
 
-            CONFIG.save(deps.storage, &new_config)?;
-            CONTRACT_STATUS.save(deps.storage, &contract_status)?;
+            CONFIG.save(deps.storage, &config)?;
             TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
+            CONTRACT_STATUS.save(deps.storage, &contract_status)?;
+            PRNG.save(deps.storage, prng_seed)?;
             MINTERS.save(deps.storage, &minters)?;
             TX_COUNT.save(deps.storage, &tx_count)?;
-
-            // TODO - store this to use to distinguish between storage access types
-            // any queries before this block height should use the old storage access
-            let block = env.block.height;
-
-            // TODO - migrate viewing key store?
-            // TODO - migrate balances
 
             Ok(Response::default())
         }
@@ -127,10 +120,12 @@ pub fn instantiate(
     PrngStore::save(deps.storage, prng_seed_hashed)?;
 
     {
+        let admin = deps.api.addr_canonicalize(admin.as_str())?;
         let initial_balances = msg.initial_balances.unwrap_or_default();
         for balance in initial_balances {
             let amount = balance.amount.u128();
             let balance_address = deps.api.addr_validate(balance.address.as_str())?;
+            let balance_address = deps.api.addr_canonicalize(balance_address.as_str())?;
             // Here amount is also the amount to be added because the account has no prior balance
             BalancesStore::update_balance(
                 deps.storage,
@@ -434,7 +429,6 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::RemoveSupportedDenoms { denoms, .. } => {
             remove_supported_denoms(deps, info, denoms)
         }
-        ExecuteMsg::Migrate {} => try_migrate(deps, env, info),
     };
 
     pad_handle_result(response, RESPONSE_BLOCK_SIZE)
@@ -584,37 +578,35 @@ fn permit_queries(deps: Deps, permit: Permit, query: QueryWithPermit) -> Result<
     }
 }
 
-/// Check if a viewing key matches an OG account.
-fn check_og_vk(storage: &dyn Storage, account: &CanonicalAddr, viewing_key: &str) -> StdResult<()> {
-    let balance_store = prefixed_read(storage, b"viewingkey");
-    let expected_hash = balance_store.get(account.as_slice());
-    let expected_hash = match &expected_hash {
-        Some(hash) => hash.as_slice(),
-        None => &[0u8; VIEWING_KEY_SIZE],
-    };
-    // TODO - check that this works exactly the same way as the original version
-    let key_hash = sha_256(viewing_key.as_bytes());
-    if ct_slice_compare(&key_hash, expected_hash) {
-        Ok(())
-    } else {
-        Err(StdError::generic_err("unauthorized"))
-    }
-}
-
-fn ct_slice_compare(s1: &[u8], s2: &[u8]) -> bool {
-    bool::from(s1.ct_eq(s2))
-}
+// /// Check if a viewing key matches an OG account.
+// fn check_og_vk(storage: &dyn Storage, account: &CanonicalAddr, viewing_key: &str) -> StdResult<()> {
+//     let vk_store = prefixed_read(storage, b"viewingkey");
+//     let expected_hash = vk_store.get(account.as_slice());
+//     let expected_hash = match &expected_hash {
+//         Some(hash) => hash.as_slice(),
+//         None => &[0u8; VIEWING_KEY_SIZE],
+//     };
+//     let key_hash = sha_256(viewing_key.as_bytes());
+//     if ct_slice_compare(&key_hash, expected_hash) {
+//         Ok(())
+//     } else {
+//         Err(StdError::generic_err("unauthorized"))
+//     }
+// }
+//
+// /// Constant time slice comparison.
+// fn ct_slice_compare(s1: &[u8], s2: &[u8]) -> bool {
+//     bool::from(s1.ct_eq(s2))
+// }
 
 pub fn viewing_keys_queries(deps: Deps, msg: QueryMsg) -> StdResult<Binary> {
     let (addresses, key) = msg.get_validation_params(deps.api)?;
 
     for address in addresses {
         let canonical_addr = deps.api.addr_canonicalize(address.as_str())?;
-        let result1 = check_og_vk(deps.storage, &canonical_addr, key.as_str());
-        let result2 = result1.is_err()
-            && ViewingKey::check(deps.storage, address.as_str(), key.as_str()).is_ok();
+        let result = ViewingKey::check(deps.storage, canonical_addr.as_slice(), key.as_str());
 
-        if result1.is_ok() || result2 {
+        if result.is_ok() {
             return match msg {
                 // Base
                 QueryMsg::Balance { address, .. } => query_balance(deps, address),
@@ -740,8 +732,10 @@ pub fn query_transfers(
     // The address of 'account' should not be validated if query_transfers() was called by a permit
     // call, for compatibility with non-Secret addresses.
     let account = Addr::unchecked(account);
+    let account = deps.api.addr_canonicalize(account.as_str())?;
 
     let (txs, total) = StoredLegacyTransfer::get_transfers(
+        deps.api,
         deps.storage,
         account,
         page,
@@ -768,9 +762,16 @@ pub fn query_transactions(
     // The address of 'account' should not be validated if query_transactions() was called by a
     // permit call, for compatibility with non-Secret addresses.
     let account = Addr::unchecked(account);
+    let account = deps.api.addr_canonicalize(account.as_str())?;
 
-    let (txs, total) =
-        StoredExtendedTx::get_txs(deps.storage, account, page, page_size, should_filter_decoys)?;
+    let (txs, total) = StoredExtendedTx::get_txs(
+        deps.api,
+        deps.storage,
+        account,
+        page,
+        page_size,
+        should_filter_decoys,
+    )?;
 
     let result = QueryAnswer::TransactionHistory {
         txs,
@@ -785,17 +786,27 @@ pub fn query_balance(deps: Deps, account: String) -> StdResult<Binary> {
     // The address of 'account' should not be validated if query_balance() was called by a permit
     // call, for compatibility with non-Secret addresses.
     let account = Addr::unchecked(account);
+    let account = deps.api.addr_canonicalize(account.as_str())?;
 
     // ------------------------------- //
-    let og_account = deps.api.addr_canonicalize(account.as_str())?;
-    let og_balance_key = [b"\x00\x08balances", og_account.as_slice()].concat();
-
-    if let Some(balance_bytes) = &deps.storage.get(&og_balance_key) {
-        let balance = slice_to_u128(&balance_bytes).unwrap();
-        let amount = Uint128::new(balance);
-        let response = QueryAnswer::Balance { amount };
-        return to_binary(&response);
-    }
+    // let og_account = deps.api.addr_canonicalize(account.as_str())?;
+    //
+    // // one option
+    // if is_og(og_account) {
+    //     let amount = Uint128::new(BalancesStore::v_0_10_load(deps.storage, &og_account));
+    //     let response = QueryAnswer::Balance { amount };
+    //     return to_binary(&response);
+    // }
+    //
+    // // another option
+    // let og_balance_key = [b"\x00\x08balances", og_account.as_slice()].concat();
+    //
+    // if let Some(balance_bytes) = &deps.storage.get(&og_balance_key) {
+    //     let balance = slice_to_u128(&balance_bytes).unwrap();
+    //     let amount = Uint128::new(balance);
+    //     let response = QueryAnswer::Balance { amount };
+    //     return to_binary(&response);
+    // }
     // ------------------------------- //
 
     let amount = Uint128::new(BalancesStore::load(deps.storage, &account));
@@ -891,6 +902,10 @@ fn try_mint_impl(
     account_random_pos: Option<usize>,
 ) -> StdResult<()> {
     let raw_amount = amount.u128();
+    let minter = deps.api.addr_canonicalize(minter.as_str())?;
+    let recipient = deps.api.addr_canonicalize(recipient.as_str())?;
+
+    let decoys = convert_decoys(&decoys, deps.api)?;
 
     BalancesStore::update_balance(
         deps.storage,
@@ -1012,36 +1027,32 @@ fn try_batch_mint(
     Ok(Response::new().set_data(to_binary(&ExecuteAnswer::BatchMint { status: Success })?))
 }
 
-// is it ok to mutate the deps like this?
-pub fn try_set_key(mut deps: DepsMut, info: MessageInfo, key: String) -> StdResult<Response> {
-    // otherwise it would move here
-    let migrated = try_migrate_account_balance(&mut deps, &info)?;
-    ViewingKey::set(deps.storage, info.sender.as_str(), key.as_str());
-    Ok(Response::new()
-        .set_data(to_binary(&ExecuteAnswer::SetViewingKey {
+pub fn try_set_key(deps: DepsMut, info: MessageInfo, key: String) -> StdResult<Response> {
+    let canonical_addr = deps.api.addr_canonicalize(info.sender.as_str())?;
+    ViewingKey::set(deps.storage, canonical_addr.as_slice(), key.as_str());
+    Ok(
+        Response::new().set_data(to_binary(&ExecuteAnswer::SetViewingKey {
             status: Success,
-        })?)
-        .add_attribute("migrated", migrated.to_string()))
+        })?),
+    )
 }
 
 pub fn try_create_key(
-    mut deps: DepsMut,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     entropy: String,
 ) -> StdResult<Response> {
-    let migrated = try_migrate_account_balance(&mut deps, &info)?;
+    let canonical_addr = deps.api.addr_canonicalize(info.sender.as_str())?;
     let key = ViewingKey::create(
         deps.storage,
         &info,
         &env,
-        info.sender.as_str(),
+        canonical_addr.as_slice(),
         entropy.as_ref(),
     );
 
-    Ok(Response::new()
-        .set_data(to_binary(&ExecuteAnswer::CreateViewingKey { key })?)
-        .add_attribute("migrated", migrated.to_string()))
+    Ok(Response::new().set_data(to_binary(&ExecuteAnswer::CreateViewingKey { key })?))
 }
 
 fn set_contract_status(
@@ -1182,7 +1193,8 @@ fn try_deposit(
     raw_amount = safe_add(&mut total_supply, raw_amount);
     TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
 
-    let sender_address = &info.sender;
+    let sender_address = &deps.api.addr_canonicalize(info.sender.as_str())?;
+    let decoys = convert_decoys(&decoys, deps.api)?;
 
     BalancesStore::update_balance(
         deps.storage,
@@ -1205,6 +1217,34 @@ fn try_deposit(
     )?;
 
     Ok(Response::new().set_data(to_binary(&ExecuteAnswer::Deposit { status: Success })?))
+}
+
+/// Transform the decoys to CanonicalAddr
+fn convert_decoys(
+    decoys: &Option<Vec<Addr>>,
+    api: &dyn Api,
+) -> StdResult<Option<Vec<CanonicalAddr>>> {
+    if let Some(decoys_vec) = decoys {
+        let mut canonical_decoys_vec = Vec::with_capacity(decoys_vec.len());
+        for decoy in decoys_vec {
+            canonical_decoys_vec.push(api.addr_canonicalize(decoy.as_str())?)
+        }
+        Ok(Some(canonical_decoys_vec))
+    } else {
+        Ok(None)
+    }
+}
+
+// unsure if better
+fn _alt_convert_decoys(
+    decoys: Vec<Addr>, // Take ownership of Vec<Addr>
+    api: &dyn Api,
+) -> StdResult<Vec<CanonicalAddr>> {
+    // Directly return a Vec<CanonicalAddr>
+    decoys
+        .into_iter() // Consumes `decoys`, no need to clone or borrow
+        .map(|decoy| api.addr_canonicalize(decoy.as_str()))
+        .collect() // Collects into a Result<Vec<CanonicalAddr>, Error>
 }
 
 fn try_redeem(
@@ -1240,12 +1280,14 @@ fn try_redeem(
         ));
     };
 
-    let sender_address = &info.sender;
     let amount_raw = amount.u128();
+
+    let sender_address = deps.api.addr_canonicalize(info.sender.as_str())?;
+    let decoys = convert_decoys(&decoys, deps.api)?;
 
     BalancesStore::update_balance(
         deps.storage,
-        sender_address,
+        &sender_address,
         amount_raw,
         false,
         "redeem",
@@ -1279,7 +1321,7 @@ fn try_redeem(
 
     store_redeem(
         deps.storage,
-        sender_address,
+        &sender_address,
         amount,
         constants.symbol,
         &env.block,
@@ -1307,10 +1349,14 @@ fn try_transfer_impl(
     decoys: Option<Vec<Addr>>,
     account_random_pos: Option<usize>,
 ) -> StdResult<()> {
+    let sender = deps.api.addr_canonicalize(sender.as_str())?;
+    let recipient = deps.api.addr_canonicalize(recipient.as_str())?;
+    let decoys = convert_decoys(&decoys, deps.api)?;
+
     perform_transfer(
         deps.storage,
-        sender,
-        recipient,
+        &sender,
+        &recipient,
         amount.u128(),
         &decoys,
         &account_random_pos,
@@ -1319,9 +1365,9 @@ fn try_transfer_impl(
     let symbol = CONFIG.load(deps.storage)?.symbol;
     store_transfer(
         deps.storage,
-        sender,
-        sender,
-        recipient,
+        &sender,
+        &sender,
+        &recipient,
         amount,
         symbol,
         memo,
@@ -1581,6 +1627,11 @@ fn try_transfer_from_impl(
 
     use_allowance(deps.storage, env, owner, spender, raw_amount)?;
 
+    let spender = &deps.api.addr_canonicalize(spender.as_str())?;
+    let owner = &deps.api.addr_canonicalize(owner.as_str())?;
+    let recipient = &deps.api.addr_canonicalize(recipient.as_str())?;
+    let decoys = convert_decoys(&decoys, deps.api)?;
+
     perform_transfer(
         deps.storage,
         owner,
@@ -1803,6 +1854,10 @@ fn try_burn_from(
     let raw_amount = amount.u128();
     use_allowance(deps.storage, env, &owner, &info.sender, raw_amount)?;
 
+    let sender = deps.api.addr_canonicalize(info.sender.as_str())?;
+    let owner = deps.api.addr_canonicalize(owner.as_str())?;
+    let decoys = convert_decoys(&decoys, deps.api)?;
+
     BalancesStore::update_balance(
         deps.storage,
         &owner,
@@ -1828,7 +1883,7 @@ fn try_burn_from(
     store_burn(
         deps.storage,
         owner,
-        info.sender,
+        sender,
         amount,
         constants.symbol,
         memo,
@@ -1862,13 +1917,18 @@ fn try_batch_burn_from(
         let amount = action.amount.u128();
         use_allowance(deps.storage, env, &owner, &spender, amount)?;
 
+        let burner = &spender;
+        let burner = deps.api.addr_canonicalize(burner.as_str())?;
+        let owner = deps.api.addr_canonicalize(owner.as_str())?;
+        let decoys = convert_decoys(&action.decoys, deps.api)?;
+
         BalancesStore::update_balance(
             deps.storage,
             &owner,
             amount,
             false,
             "burn",
-            &action.decoys,
+            &decoys,
             &account_random_pos,
         )?;
 
@@ -1884,12 +1944,12 @@ fn try_batch_burn_from(
         store_burn(
             deps.storage,
             owner,
-            spender.clone(),
+            burner,
             action.amount,
             constants.symbol.clone(),
             action.memo,
             &env.block,
-            &action.decoys,
+            &decoys,
             &account_random_pos,
         )?;
     }
@@ -2071,9 +2131,12 @@ fn try_burn(
 
     let raw_amount = amount.u128();
 
+    let sender = deps.api.addr_canonicalize(info.sender.as_str())?;
+    let decoys = convert_decoys(&decoys, deps.api)?;
+
     BalancesStore::update_balance(
         deps.storage,
-        &info.sender,
+        &sender,
         raw_amount,
         false,
         "burn",
@@ -2093,8 +2156,8 @@ fn try_burn(
 
     store_burn(
         deps.storage,
-        info.sender.clone(),
-        info.sender,
+        sender.clone(),
+        sender,
         amount,
         constants.symbol,
         memo,
@@ -2108,20 +2171,20 @@ fn try_burn(
 
 fn perform_transfer(
     store: &mut dyn Storage,
-    from: &Addr,
-    to: &Addr,
+    from: &CanonicalAddr,
+    to: &CanonicalAddr,
     amount: u128,
-    decoys: &Option<Vec<Addr>>,
+    decoys: &Option<Vec<CanonicalAddr>>,
     account_random_pos: &Option<usize>,
 ) -> StdResult<()> {
-    BalancesStore::update_balance(store, from, amount, false, "transfer", &None, &None)?;
+    BalancesStore::update_balance(store, &from, amount, false, "transfer", &None, &None)?;
     BalancesStore::update_balance(
         store,
-        to,
+        &to,
         amount,
         true,
         "transfer",
-        decoys,
+        &decoys,
         account_random_pos,
     )?;
 
@@ -2159,74 +2222,6 @@ fn is_valid_symbol(symbol: &str) -> bool {
     let len_is_valid = (3..=20).contains(&len);
 
     len_is_valid && symbol.bytes().all(|byte| byte.is_ascii_alphabetic())
-}
-
-pub fn try_migrate(deps: DepsMut, _env: Env, info: MessageInfo) -> StdResult<Response> {
-    let canonical_addr = &deps.api.addr_canonicalize(info.sender.as_str())?;
-    let addr = &info.sender;
-
-    let old_balance_key = [b"\x00\x08balances", canonical_addr.as_slice()].concat();
-    let old_vk_store_key = [b"\x00\x0aviewingkey", canonical_addr.as_slice()].concat();
-    let old_allowance_key = [b"\x00\x0aallowances", canonical_addr.as_slice()].concat();
-    let old_transfers_key = [b"\x00\x09transfers", canonical_addr.as_slice()].concat();
-
-    if let Some(raw_balance) = &deps.storage.get(&old_balance_key) {
-        let balance = bincode2::deserialize::<u128>(&raw_balance).unwrap_or_default();
-        BalancesStore::update_balance(
-            deps.storage,
-            &info.sender,
-            balance,
-            true,
-            "migrate",
-            &None,
-            &None,
-        )?;
-        deps.storage.remove(&old_balance_key);
-    }
-
-    if let Some(raw_key_hash) = &deps.storage.get(&old_vk_store_key) {
-        // is this safe?
-        let new_vk_store_key = [b"\x00\x0cviewing_keys", addr.as_bytes()].concat();
-        deps.storage.set(&new_vk_store_key, &raw_key_hash);
-        deps.storage.remove(&old_vk_store_key);
-    }
-
-    Ok(Response::new().set_data(to_binary(&ExecuteAnswer::Migrate { status: Success })?))
-}
-
-fn try_migrate_account_balance(deps: &mut DepsMut, info: &MessageInfo) -> StdResult<bool> {
-    let canonical_account = deps.api.addr_canonicalize(info.sender.as_str())?;
-    let original_key = [b"\x00\x08balances", canonical_account.as_slice()].concat();
-
-    if let Some(raw_balance) = &deps.storage.get(&original_key) {
-        let balance = bincode2::deserialize::<u128>(&raw_balance).unwrap_or_default();
-        BalancesStore::update_balance(
-            deps.storage,
-            &info.sender,
-            balance,
-            true,
-            "migrate",
-            &None,
-            &None,
-        )?;
-        deps.storage.remove(&original_key);
-        return Ok(true);
-    }
-
-    Ok(false)
-}
-
-// Helpers
-
-/// Converts 16 bytes value into u128
-/// Errors if data found that is not 16 bytes
-fn slice_to_u128(data: &[u8]) -> StdResult<u128> {
-    match <[u8; 16]>::try_from(data) {
-        Ok(bytes) => Ok(u128::from_be_bytes(bytes)),
-        Err(_) => Err(StdError::generic_err(
-            "Corrupted data found. 16 byte expected.",
-        )),
-    }
 }
 
 #[cfg(test)]
@@ -2416,8 +2411,8 @@ mod tests {
         assert_eq!(constants.decimals, 8);
         assert_eq!(constants.total_supply_is_public, false);
 
-        ViewingKey::set(deps.as_mut().storage, "lebron", "lolz fun yay");
-        let is_vk_correct = ViewingKey::check(&deps.storage, "lebron", "lolz fun yay");
+        ViewingKey::set(deps.as_mut().storage, b"lebron", "lolz fun yay");
+        let is_vk_correct = ViewingKey::check(&deps.storage, b"lebron", "lolz fun yay");
         assert!(
             is_vk_correct.is_ok(),
             "Viewing key verification failed!: {}",
@@ -2457,8 +2452,8 @@ mod tests {
         assert_eq!(constants.mint_is_enabled, true);
         assert_eq!(constants.burn_is_enabled, true);
 
-        ViewingKey::set(deps.as_mut().storage, "lebron", "lolz fun yay");
-        let is_vk_correct = ViewingKey::check(&deps.storage, "lebron", "lolz fun yay");
+        ViewingKey::set(deps.as_mut().storage, b"lebron", "lolz fun yay");
+        let is_vk_correct = ViewingKey::check(&deps.storage, b"lebron", "lolz fun yay");
         assert!(
             is_vk_correct.is_ok(),
             "Viewing key verification failed!: {}",
@@ -2526,8 +2521,14 @@ mod tests {
         let bob_addr = Addr::unchecked("bob".to_string());
         let alice_addr = Addr::unchecked("alice".to_string());
 
-        assert_eq!(5000 - 1000, BalancesStore::load(&deps.storage, &bob_addr));
-        assert_eq!(1000, BalancesStore::load(&deps.storage, &alice_addr));
+        let bob_canonical = deps.api.addr_canonicalize(bob_addr.as_str()).unwrap();
+        let alice_canonical = deps.api.addr_canonicalize(alice_addr.as_str()).unwrap();
+
+        assert_eq!(
+            5000 - 1000,
+            BalancesStore::load(&deps.storage, &bob_canonical)
+        );
+        assert_eq!(1000, BalancesStore::load(&deps.storage, &alice_canonical));
 
         let handle_msg = ExecuteMsg::Transfer {
             recipient: "alice".to_string(),
@@ -2569,10 +2570,15 @@ mod tests {
         let lior_addr = Addr::unchecked("lior".to_string());
         let jhon_addr = Addr::unchecked("jhon".to_string());
 
-        let bob_balance = BalancesStore::load(&deps.storage, &bob_addr);
-        let alice_balance = BalancesStore::load(&deps.storage, &alice_addr);
-        let lior_balance = BalancesStore::load(&deps.storage, &lior_addr);
-        let jhon_balance = BalancesStore::load(&deps.storage, &jhon_addr);
+        let bob_canonical = deps.api.addr_canonicalize(bob_addr.as_str()).unwrap();
+        let alice_canonical = deps.api.addr_canonicalize(alice_addr.as_str()).unwrap();
+        let lior_canonical = deps.api.addr_canonicalize(lior_addr.as_str()).unwrap();
+        let jhon_canonical = deps.api.addr_canonicalize(jhon_addr.as_str()).unwrap();
+
+        let bob_balance = BalancesStore::load(&deps.storage, &bob_canonical);
+        let alice_balance = BalancesStore::load(&deps.storage, &alice_canonical);
+        let lior_balance = BalancesStore::load(&deps.storage, &lior_canonical);
+        let jhon_balance = BalancesStore::load(&deps.storage, &jhon_canonical);
 
         let handle_msg = ExecuteMsg::Transfer {
             recipient: "alice".to_string(),
@@ -2592,14 +2598,20 @@ mod tests {
 
         assert_eq!(
             bob_balance - 1000,
-            BalancesStore::load(&deps.storage, &bob_addr)
+            BalancesStore::load(&deps.storage, &bob_canonical)
         );
         assert_eq!(
             alice_balance + 1000,
-            BalancesStore::load(&deps.storage, &alice_addr)
+            BalancesStore::load(&deps.storage, &alice_canonical)
         );
-        assert_eq!(lior_balance, BalancesStore::load(&deps.storage, &lior_addr));
-        assert_eq!(jhon_balance, BalancesStore::load(&deps.storage, &jhon_addr));
+        assert_eq!(
+            lior_balance,
+            BalancesStore::load(&deps.storage, &lior_canonical)
+        );
+        assert_eq!(
+            jhon_balance,
+            BalancesStore::load(&deps.storage, &jhon_canonical)
+        );
     }
 
     #[test]
@@ -2728,9 +2740,9 @@ mod tests {
             ExecuteAnswer::CreateViewingKey { key } => key,
             _ => panic!("NOPE"),
         };
-        // let bob_canonical = deps.as_mut().api.addr_canonicalize("bob").unwrap();
+        let bob_canonical = deps.as_mut().api.addr_canonicalize("bob").unwrap();
 
-        let result = ViewingKey::check(&deps.storage, "bob", key.as_str());
+        let result = ViewingKey::check(&deps.storage, bob_canonical.as_slice(), key.as_str());
         assert!(result.is_ok());
 
         // let saved_vk = read_viewing_key(&deps.storage, &bob_canonical).unwrap();
@@ -2785,7 +2797,9 @@ mod tests {
             to_binary(&ExecuteAnswer::SetViewingKey { status: Success }).unwrap(),
         );
 
-        let result = ViewingKey::check(&deps.storage, "bob", actual_vk.as_str());
+        let bob_canonical = deps.as_mut().api.addr_canonicalize("bob").unwrap();
+
+        let result = ViewingKey::check(&deps.storage, bob_canonical.as_slice(), actual_vk.as_str());
         assert!(result.is_ok());
     }
 
@@ -3069,8 +3083,12 @@ mod tests {
                     height: 12_345,
                     time: Timestamp::from_seconds(1_571_797_420),
                     chain_id: "cosmos-testnet-14002".to_string(),
+                    random: None,
                 },
-                transaction: Some(TransactionInfo { index: 3 }),
+                transaction: Some(TransactionInfo {
+                    index: 3,
+                    hash: "lol".to_string(),
+                }),
                 contract: ContractInfo {
                     address: Addr::unchecked(MOCK_CONTRACT_ADDR.to_string()),
                     code_hash: "".to_string(),
@@ -3101,8 +3119,11 @@ mod tests {
             "handle() failed: {}",
             handle_result.err().unwrap()
         );
-        let bob_canonical = Addr::unchecked("bob".to_string());
-        let alice_canonical = Addr::unchecked("alice".to_string());
+        let bob_addr = Addr::unchecked("bob".to_string());
+        let alice_addr = Addr::unchecked("alice".to_string());
+
+        let bob_canonical = deps.api.addr_canonicalize(bob_addr.as_str()).unwrap();
+        let alice_canonical = deps.api.addr_canonicalize(alice_addr.as_str()).unwrap();
 
         let bob_balance = BalancesStore::load(&deps.storage, &bob_canonical);
         let alice_balance = BalancesStore::load(&deps.storage, &alice_canonical);
@@ -3245,10 +3266,15 @@ mod tests {
             )
             .unwrap()
         ));
-        let bob_canonical = Addr::unchecked("bob".to_string());
-        let contract_canonical = Addr::unchecked("contract".to_string());
+
+        let bob_addr = Addr::unchecked("bob".to_string());
+        let bob_canonical = deps.api.addr_canonicalize(bob_addr.as_str()).unwrap();
+
+        let contract_addr = Addr::unchecked("contract".to_string());
+        let canon_contract_addr = deps.api.addr_canonicalize(contract_addr.as_str()).unwrap();
+
         let bob_balance = BalancesStore::load(&deps.storage, &bob_canonical);
-        let contract_balance = BalancesStore::load(&deps.storage, &contract_canonical);
+        let contract_balance = BalancesStore::load(&deps.storage, &canon_contract_addr);
         assert_eq!(bob_balance, 5000 - 2000);
         assert_eq!(contract_balance, 2000);
         let total_supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
@@ -3384,7 +3410,8 @@ mod tests {
             "handle() failed: {}",
             handle_result.err().unwrap()
         );
-        let bob_canonical = Addr::unchecked("bob".to_string());
+        let bob_addr = Addr::unchecked("bob".to_string());
+        let bob_canonical = deps.api.addr_canonicalize(bob_addr.as_str()).unwrap();
         let bob_balance = BalancesStore::load(&deps.storage, &bob_canonical);
         assert_eq!(bob_balance, 10000 - 2000);
         let total_supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
@@ -3538,8 +3565,9 @@ mod tests {
             handle_result.err().unwrap()
         );
         for (name, amount) in &[("bob", 200_u128), ("jerry", 300), ("mike", 400)] {
-            let name_canon = Addr::unchecked(name.to_string());
-            let balance = BalancesStore::load(&deps.storage, &name_canon);
+            let name_addr = Addr::unchecked(name.to_string());
+            let name_canonical = deps.api.addr_canonicalize(name_addr.as_str()).unwrap();
+            let balance = BalancesStore::load(&deps.storage, &name_canonical);
             assert_eq!(balance, 10000 - amount);
         }
         let total_supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
@@ -3571,8 +3599,9 @@ mod tests {
             handle_result.err().unwrap()
         );
         for name in &["bob", "jerry", "mike"] {
-            let name_canon = Addr::unchecked(name.to_string());
-            let balance = BalancesStore::load(&deps.storage, &name_canon);
+            let name_addr = Addr::unchecked(name.to_string());
+            let name_canonical = deps.api.addr_canonicalize(name_addr.as_str()).unwrap();
+            let balance = BalancesStore::load(&deps.storage, &name_canonical);
             assert_eq!(balance, 10000 - allowance_size);
         }
         let total_supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
@@ -3629,10 +3658,13 @@ mod tests {
             handle_result.err().unwrap()
         );
 
-        let bob_canonical = Addr::unchecked("bob".to_string());
-        let alice_canonical = Addr::unchecked("alice".to_string());
+        let bob_addr = Addr::unchecked("bob".to_string());
+        let alice_addr = Addr::unchecked("alice".to_string());
 
-        let allowance = AllowancesStore::load(&deps.storage, &bob_canonical, &alice_canonical);
+        let _bob_canonical = deps.api.addr_canonicalize(bob_addr.as_str()).unwrap();
+        let _alice_canonical = deps.api.addr_canonicalize(alice_addr.as_str()).unwrap();
+
+        let allowance = AllowancesStore::load(&deps.storage, &bob_addr, &alice_addr);
         assert_eq!(
             allowance,
             crate::state::Allowance {
@@ -3673,7 +3705,7 @@ mod tests {
             handle_result.err().unwrap()
         );
 
-        let allowance = AllowancesStore::load(&deps.storage, &bob_canonical, &alice_canonical);
+        let allowance = AllowancesStore::load(&deps.storage, &bob_addr, &alice_addr);
         assert_eq!(
             allowance,
             crate::state::Allowance {
@@ -3928,7 +3960,8 @@ mod tests {
             handle_result.err().unwrap()
         );
 
-        let canonical = Addr::unchecked("butler".to_string());
+        let addr = Addr::unchecked("butler".to_string());
+        let canonical = deps.api.addr_canonicalize(addr.as_str()).unwrap();
         assert_eq!(BalancesStore::load(&deps.storage, &canonical), 3000)
     }
 
@@ -4000,7 +4033,8 @@ mod tests {
             handle_result.err().unwrap()
         );
 
-        let canonical = Addr::unchecked("lebron".to_string());
+        let addr = Addr::unchecked("lebron".to_string());
+        let canonical = deps.api.addr_canonicalize(addr.as_str()).unwrap();
         assert_eq!(BalancesStore::load(&deps.storage, &canonical), 6000)
     }
 

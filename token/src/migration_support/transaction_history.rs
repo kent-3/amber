@@ -446,7 +446,7 @@ pub fn get_txs<A: Api, S: Storage>(
 
     // Try to access the storage of txs for the account.
     // If it doesn't exist yet, return an empty list of transfers.
-    let store = AppendStore::<StoredRichTx, _, _>::attach(&store);
+    let store = AppendStore::<StoredRichTx, _>::attach(&store);
     let store = if let Some(result) = store {
         result?
     } else {
@@ -480,7 +480,7 @@ pub fn get_transfers<A: Api, S: Storage>(
 
     // Try to access the storage of transfers for the account.
     // If it doesn't exist yet, return an empty list of transfers.
-    let store = AppendStore::<StoredLegacyTransfer, _, _>::attach(&store);
+    let store = AppendStore::<StoredLegacyTransfer, _>::attach(&store);
     let store = if let Some(result) = store {
         result?
     } else {

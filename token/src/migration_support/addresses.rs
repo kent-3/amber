@@ -67,19 +67,19 @@ impl From<Vec<u8>> for CanonicalAddr {
     }
 }
 
-impl CanonicalAddr {
-    pub fn as_slice(&self) -> &[u8] {
-        &self.0.as_slice()
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
+// impl CanonicalAddr {
+//     pub fn as_slice(&self) -> &[u8] {
+//         &self.0.as_slice()
+//     }
+//
+//     pub fn len(&self) -> usize {
+//         self.0.len()
+//     }
+//
+//     pub fn is_empty(&self) -> bool {
+//         self.0.is_empty()
+//     }
+// }
 
 impl fmt::Display for CanonicalAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

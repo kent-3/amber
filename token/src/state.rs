@@ -2,10 +2,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, CanonicalAddr, StdError, StdResult, Storage};
-use cosmwasm_storage::to_length_prefixed;
+use cosmwasm_storage::{prefixed, prefixed_read, PrefixedStorage, ReadonlyPrefixedStorage};
+
+use secret_toolkit::crypto::SHA256_HASH_SIZE;
 use secret_toolkit::serialization::Json;
 use secret_toolkit::storage::{Item, Keymap, Keyset};
-use secret_toolkit_crypto::SHA256_HASH_SIZE;
 
 use crate::msg::ContractStatusLevel;
 
@@ -121,26 +122,34 @@ pub fn safe_add(balance: &mut u128, amount: u128) -> u128 {
     *balance - prev_balance
 }
 
-pub static BALANCES: Item<u128> = Item::new(PREFIX_BALANCES);
+// pub static BALANCES: Item<u128> = Item::new(PREFIX_BALANCES);
 pub struct BalancesStore {}
 impl BalancesStore {
-    fn save(store: &mut dyn Storage, account: &Addr, amount: u128) -> StdResult<()> {
-        let balances = BALANCES.add_suffix(account.as_str().as_bytes());
-        balances.save(store, &amount)
+    fn save(store: &mut dyn Storage, account: &CanonicalAddr, amount: u128) -> () {
+        let mut balances = prefixed(store, PREFIX_BALANCES);
+        balances.set(&account.as_slice(), &amount.to_be_bytes());
     }
 
-    pub fn load(store: &dyn Storage, account: &Addr) -> u128 {
-        let balances = BALANCES.add_suffix(account.as_str().as_bytes());
-        balances.load(store).unwrap_or_default()
+    pub fn load(store: &dyn Storage, account: &CanonicalAddr) -> u128 {
+        let balances_store = prefixed_read(store, PREFIX_BALANCES);
+
+        let account_bytes = account.as_slice();
+        let result = balances_store.get(account_bytes);
+
+        match result {
+            // This unwrap is ok because we know we stored things correctly
+            Some(balance_bytes) => slice_to_u128(&balance_bytes).unwrap(),
+            None => 0,
+        }
     }
 
     pub fn update_balance(
         store: &mut dyn Storage,
-        account: &Addr,
+        account: &CanonicalAddr,
         amount_to_be_updated: u128,
         should_add: bool,
         operation_name: &str,
-        decoys: &Option<Vec<Addr>>,
+        decoys: &Option<Vec<CanonicalAddr>>,
         account_random_pos: &Option<usize>,
     ) -> StdResult<()> {
         match decoys {
@@ -162,13 +171,14 @@ impl BalancesStore {
                     }
                 };
 
-                Self::save(store, account, balance)
+                Self::save(store, account, balance);
+                Ok(())
             }
             Some(decoys_vec) => {
                 // It should always be set when decoys_vec is set
                 let account_pos = account_random_pos.unwrap();
 
-                let mut accounts_to_be_written: Vec<&Addr> = vec![];
+                let mut accounts_to_be_written: Vec<&CanonicalAddr> = vec![];
 
                 let (first_part, second_part) = decoys_vec.split_at(account_pos);
                 accounts_to_be_written.extend(first_part);
@@ -203,7 +213,7 @@ impl BalancesStore {
                             }
                         };
                     }
-                    Self::save(store, acc, new_balance)?;
+                    Self::save(store, acc, new_balance);
                 }
 
                 Ok(())
@@ -228,6 +238,9 @@ impl Allowance {
         }
     }
 }
+
+// TODO - decide if it's worth changing this, since we probably don't have any existing allowances
+// we could just change the Addr to CanonicalAddr to be consistent?
 
 pub static ALLOWANCES: Keymap<Addr, Allowance> = Keymap::new(PREFIX_ALLOWANCES);
 pub static ALLOWED: Keyset<Addr> = Keyset::new(PREFIX_ALLOWED);
@@ -303,16 +316,38 @@ impl AllowancesStore {
 }
 
 // Receiver Interface
-pub static RECEIVER_HASH: Item<String> = Item::new(PREFIX_RECEIVERS);
+
 pub struct ReceiverHashStore {}
 impl ReceiverHashStore {
     pub fn may_load(store: &dyn Storage, account: &Addr) -> StdResult<Option<String>> {
-        let receiver_hash = RECEIVER_HASH.add_suffix(account.as_str().as_bytes());
-        receiver_hash.may_load(store)
+        let store = ReadonlyPrefixedStorage::new(store, PREFIX_RECEIVERS);
+        store
+            .get(account.as_str().as_bytes())
+            .map(|data| {
+                String::from_utf8(data).map_err(|_err| {
+                    StdError::invalid_utf8("stored code hash was not a valid String")
+                })
+            })
+            .transpose()
     }
 
+    // TODO - StdResult not necessary as this can't fail, but leaving it here to not break existing stuff
     pub fn save(store: &mut dyn Storage, account: &Addr, code_hash: String) -> StdResult<()> {
-        let receiver_hash = RECEIVER_HASH.add_suffix(account.as_str().as_bytes());
-        receiver_hash.save(store, &code_hash)
+        let mut store = PrefixedStorage::new(store, PREFIX_RECEIVERS);
+        store.set(account.as_str().as_bytes(), code_hash.as_bytes());
+        Ok(())
+    }
+}
+
+// Helpers
+
+/// Converts 16 bytes value into u128
+/// Errors if data found that is not 16 bytes
+fn slice_to_u128(data: &[u8]) -> StdResult<u128> {
+    match <[u8; 16]>::try_from(data) {
+        Ok(bytes) => Ok(u128::from_be_bytes(bytes)),
+        Err(_) => Err(StdError::generic_err(
+            "Corrupted data found. 16 byte expected.",
+        )),
     }
 }

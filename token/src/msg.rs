@@ -97,7 +97,6 @@ impl InitConfig {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     // Native coin interactions
-    Migrate {},
     Redeem {
         amount: Uint128,
         denom: Option<String>,
@@ -254,13 +253,9 @@ pub enum ExecuteMsg {
         padding: Option<String>,
     },
     /// Add deposit/redeem support for these coin denoms
-    AddSupportedDenoms {
-        denoms: Vec<String>,
-    },
+    AddSupportedDenoms { denoms: Vec<String> },
     /// Remove deposit/redeem support for these coin denoms
-    RemoveSupportedDenoms {
-        denoms: Vec<String>,
-    },
+    RemoveSupportedDenoms { denoms: Vec<String> },
 
     // Permit
     RevokePermit {
@@ -436,9 +431,6 @@ pub enum ExecuteAnswer {
         status: ResponseStatus,
     },
     RemoveSupportedDenoms {
-        status: ResponseStatus,
-    },
-    Migrate {
         status: ResponseStatus,
     },
 

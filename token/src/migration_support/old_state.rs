@@ -4,15 +4,14 @@ use std::convert::TryFrom;
 use super::addresses::HumanAddr;
 use super::typed_store::{TypedStore, TypedStoreMut};
 
+use crate::msg::{status_level_to_u8, u8_to_status_level, ContractStatusLevel};
+
 use cosmwasm_std::{CanonicalAddr, StdError, StdResult, Storage};
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
 
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-use crate::msg::{status_level_to_u8, u8_to_status_level, ContractStatusLevel};
-use secret_toolkit::viewing_key::ViewingKey;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 pub static CONFIG_KEY: &[u8] = b"config";
 pub const PREFIX_TXS: &[u8] = b"transfers";
@@ -260,7 +259,7 @@ pub struct Balances<'a> {
 }
 
 impl<'a> Balances<'a> {
-    pub fn from_storage(storage: &'a mut (dyn Storage + 'a)) -> Self {
+    pub fn from_storage(storage: &'a mut dyn Storage) -> Self {
         Self {
             storage: PrefixedStorage::new(storage, PREFIX_BALANCES),
         }
@@ -315,8 +314,8 @@ impl Allowance {
     }
 }
 
-pub fn read_allowance<S: Storage>(
-    store: &S,
+pub fn read_allowance(
+    store: &dyn Storage,
     owner: &CanonicalAddr,
     spender: &CanonicalAddr,
 ) -> StdResult<Allowance> {
@@ -327,8 +326,8 @@ pub fn read_allowance<S: Storage>(
     allowance.map(Option::unwrap_or_default)
 }
 
-pub fn write_allowance<S: Storage>(
-    store: &mut S,
+pub fn write_allowance(
+    store: &mut dyn Storage,
     owner: &CanonicalAddr,
     spender: &CanonicalAddr,
     allowance: Allowance,
@@ -343,12 +342,12 @@ pub fn write_allowance<S: Storage>(
 // Viewing Keys
 
 // pub fn write_viewing_key<S: Storage>(store: &mut S, owner: &CanonicalAddr, key: &ViewingKey) {
-//     let mut balance_store = PrefixedStorage::new(PREFIX_VIEW_KEY, store);
+//     let mut balance_store = PrefixedStorage::new(store, PREFIX_VIEW_KEY);
 //     balance_store.set(owner.as_slice(), &key.to_hashed());
 // }
 //
 // pub fn read_viewing_key<S: Storage>(store: &S, owner: &CanonicalAddr) -> Option<Vec<u8>> {
-//     let balance_store = ReadonlyPrefixedStorage::new(PREFIX_VIEW_KEY, store);
+//     let balance_store = ReadonlyPrefixedStorage::new(store, PREFIX_VIEW_KEY);
 //     balance_store.get(owner.as_slice())
 // }
 

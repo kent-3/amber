@@ -1,0 +1,20 @@
+{
+  "name": "Amber",
+  "admin": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj",
+  "symbol": "AMBER",
+  "decimals": 6,
+  "initial_balances": [
+    {
+      "address": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj",
+      "amount": "8888000000"
+    }
+  ],
+  "prng_seed": "YW1iZXIgcm9ja3M=",
+  "config": {
+    "public_total_supply": true,
+    "enable_deposit": false,
+    "enable_redeem": false,
+    "enable_mint": false,
+    "enable_burn": false
+  }
+}

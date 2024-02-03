@@ -96,8 +96,16 @@ I still need to look at migrating viewing keys, tx history, allowances...
     new (account is Addr):
 
     ```rust
-    key = [to_length_prefixed(account.as_str().as_bytes()), b"balances"].concat();
+    key = [b"balances", to_length_prefixed(account.as_str().as_bytes())].concat();
     ```
+
+    multilevel prefixed storage keys look like this:
+
+    let store = ReadonlyPrefixedStorage::multilevel(storage, &[PREFIX_TXS, for_address.as_slice()]);
+    key = to_length_prefixed_nested(&[PREFIX_TXS, for_address.as_slice()])
+    key = b"\x00\x0ctransactions\x00\x20<somecanonicaladdress>"
+
+    but in the newer version, AppendStore is a static
 
 Modify the token code and try again.
 
@@ -123,3 +131,27 @@ secretcli tx compute instantiate 3389 $JSON --label "amber563 with admin 3" --fr
 ```
 secretcli tx compute migrate secret1rngq8jlggqwz4pvvn2c2sjl8fus79meg4k7uyj 3586 '{ "migrate": {} }' --from pulsar
 ```
+
+Balance query was deserializing wrong. Made another base contract, with mint and burn enabled this time.
+
+```
+JSON='{ "name": "Amber", "admin": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "symbol": "AMBER", "decimals": 6, "initial_balances": [ { "address": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "amount": "8888000000" } ], "prng_seed": "YW1iZXIgcm9ja3M=", "config": { "public_total_supply": true, "enable_deposit": true, "enable_redeem": true, "enable_mint": true, "enable_burn": true } }'
+secretcli tx compute instantiate 3389 $JSON --label "amber563 with admin 4" --from pulsar --admin secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj
+```
+
+> code_id: 3587
+> contract_address: secret1ya65zwnnxr8udjvv7lflwqvwrfeskfduqsnqj8
+
+```
+secretcli tx compute migrate secret1ya65zwnnxr8udjvv7lflwqvwrfeskfduqsnqj8 3587 '{ "migrate": {} }' --from pulsar
+```
+
+Major update! Trying to implement a version where no data migrates. Reuse original key namespaces.
+
+```
+JSON='{ "name": "Amber", "admin": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "symbol": "AMBER", "decimals": 6, "initial_balances": [ { "address": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "amount": "8888000000" } ], "prng_seed": "YW1iZXIgcm9ja3M=", "config": { "public_total_supply": true, "enable_deposit": true, "enable_redeem": true, "enable_mint": true, "enable_burn": true } }'
+secretcli tx compute instantiate 3389 $JSON --label "amber563 with admin 5" --from pulsar --admin secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj
+```
+
+> code_id: 3692
+> contract_address: secret1amkmpulft7l4hfesv6eqzw5m6gkt9awteh4q89

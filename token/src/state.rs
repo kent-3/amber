@@ -243,7 +243,7 @@ pub fn safe_add(balance: &mut u128, amount: u128) -> u128 {
 // pub static BALANCES: Item<u128> = Item::new(PREFIX_BALANCES);
 pub struct BalancesStore {}
 impl BalancesStore {
-    fn save(store: &mut dyn Storage, account: &CanonicalAddr, amount: u128) -> () {
+    fn save(store: &mut dyn Storage, account: &CanonicalAddr, amount: u128) {
         let mut balances = prefixed(store, PREFIX_BALANCES);
         balances.set(account.as_slice(), &amount.to_be_bytes());
     }

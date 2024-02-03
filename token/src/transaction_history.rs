@@ -455,7 +455,7 @@ fn store_tx_with_decoys(
                 let decoy_tx = StoredExtendedTx::new(
                     tx.id,
                     decoy_action,
-                    tx.coins.clone().into(),
+                    tx.coins.clone(),
                     tx.memo.clone(),
                     block,
                 );

@@ -23,6 +23,12 @@ pub enum MigrateMsg {
     Migrate {},
 }
 
+#[derive(Serialize, Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum MigrateAnswer {
+    Migrate { status: ResponseStatus },
+}
+
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct InstantiateMsg {
     pub name: String,
@@ -474,6 +480,7 @@ pub enum QueryMsg {
         key: String,
         page: Option<u32>,
         page_size: u32,
+        // TODO - this added field breaks compatibility. Try to make it optional
         should_filter_decoys: bool,
     },
     TransactionHistory {
@@ -481,6 +488,7 @@ pub enum QueryMsg {
         key: String,
         page: Option<u32>,
         page_size: u32,
+        // TODO - this added field breaks compatibility. Try to make it optional
         should_filter_decoys: bool,
     },
     Minters {},
@@ -575,7 +583,7 @@ pub enum QueryAnswer {
         redeem_enabled: bool,
         mint_enabled: bool,
         burn_enabled: bool,
-        supported_denoms: Vec<String>,
+        // supported_denoms: Vec<String>,
     },
     ContractStatus {
         status: ContractStatusLevel,
@@ -649,7 +657,7 @@ pub enum ContractStatusLevel {
     StopAll,
 }
 
-pub fn status_level_to_u8(status_level: ContractStatusLevel) -> u8 {
+pub fn status_level_to_u8(status_level: &ContractStatusLevel) -> u8 {
     match status_level {
         ContractStatusLevel::NormalRun => 0,
         ContractStatusLevel::StopAllButRedeems => 1,

@@ -1,5 +1,7 @@
 use schemars::JsonSchema;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use std::any::type_name;
 
 use cosmwasm_std::{Addr, CanonicalAddr, StdError, StdResult, Storage};
 use cosmwasm_storage::{prefixed, prefixed_read, PrefixedStorage, ReadonlyPrefixedStorage};
@@ -8,7 +10,9 @@ use secret_toolkit::crypto::SHA256_HASH_SIZE;
 use secret_toolkit::serialization::Json;
 use secret_toolkit::storage::{Item, Keymap, Keyset};
 
-use crate::msg::ContractStatusLevel;
+use crate::msg::{status_level_to_u8, u8_to_status_level, ContractStatusLevel};
+
+pub const KEY_CONSTANTS: &[u8] = b"constants";
 
 pub const KEY_CONFIG: &[u8] = b"config";
 pub const KEY_TOTAL_SUPPLY: &[u8] = b"total_supply";
@@ -26,13 +30,98 @@ pub const PREFIX_RECEIVERS: &[u8] = b"receivers";
 
 // Config
 
+// #[derive(Serialize, Debug, Deserialize, Clone, JsonSchema)]
+// #[cfg_attr(test, derive(Eq, PartialEq))]
+// pub struct Config {
+//     pub name: String,
+//     pub admin: Addr,
+//     pub symbol: String,
+//     pub decimals: u8,
+//     // privacy configuration
+//     pub total_supply_is_public: bool,
+//     // is deposit enabled
+//     pub deposit_is_enabled: bool,
+//     // is redeem enabled
+//     pub redeem_is_enabled: bool,
+//     // is mint enabled
+//     pub mint_is_enabled: bool,
+//     // is burn enabled
+//     pub burn_is_enabled: bool,
+//     // the address of this contract, used to validate query permits
+//     pub contract_address: Addr,
+//     // coin denoms that are supported for deposit/redeem
+//     pub supported_denoms: Vec<String>,
+//     // can admin add or remove supported denoms
+//     pub can_modify_denoms: bool,
+// }
+
+// pub static CONFIG: Item<Config> = Item::new(KEY_CONFIG);
+
+pub static TOTAL_SUPPLY: Item<u128> = Item::new(KEY_TOTAL_SUPPLY);
+
+// TODO - when converting to old style state, serialize at JSON instead of [u8]
+pub static CONTRACT_STATUS: Item<ContractStatusLevel, Json> = Item::new(KEY_CONTRACT_STATUS);
+
+pub static PRNG: Item<[u8; SHA256_HASH_SIZE]> = Item::new(KEY_PRNG);
+
+pub static TX_COUNT: Item<u64> = Item::new(KEY_TX_COUNT);
+
+pub struct PrngStore {}
+impl PrngStore {
+    pub fn load(store: &dyn Storage) -> StdResult<[u8; SHA256_HASH_SIZE]> {
+        let loaded_constants = ConfigStore::load_constants(store)?;
+
+        // This should always work because the seed is sha256 hashed
+        loaded_constants
+            .prng_seed
+            .try_into()
+            .map_err(|_err| StdError::generic_err("stored prng_seed was not 32 bytes"))
+    }
+
+    pub fn save(store: &mut dyn Storage, prng_seed: [u8; SHA256_HASH_SIZE]) -> StdResult<()> {
+        let mut config_store = prefixed(store, PREFIX_CONFIG);
+        set_bin_data(&mut config_store, KEY_PRNG, &prng_seed)
+    }
+}
+
+pub struct MintersStore {}
+impl MintersStore {
+    pub fn load(store: &dyn Storage) -> StdResult<Vec<Addr>> {
+        let config_store = prefixed_read(store, PREFIX_CONFIG);
+        get_bin_data(config_store, KEY_MINTERS)
+    }
+
+    pub fn save(store: &mut dyn Storage, minters_to_set: Vec<Addr>) -> StdResult<()> {
+        let mut config_store = prefixed(store, PREFIX_CONFIG);
+        set_bin_data(&mut config_store, KEY_MINTERS, &minters_to_set)
+    }
+
+    pub fn add_minters(store: &mut dyn Storage, minters_to_add: Vec<Addr>) -> StdResult<()> {
+        let mut loaded_minters = Self::load(store)?;
+        loaded_minters.extend(minters_to_add);
+
+        Self::save(store, loaded_minters)
+    }
+
+    pub fn remove_minters(store: &mut dyn Storage, minters_to_remove: Vec<Addr>) -> StdResult<()> {
+        let mut loaded_minters = Self::load(store)?;
+
+        for minter in minters_to_remove {
+            loaded_minters.retain(|x| x != &minter);
+        }
+
+        Self::save(store, loaded_minters)
+    }
+}
+
 #[derive(Serialize, Debug, Deserialize, Clone, JsonSchema)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
-pub struct Config {
+pub struct Constants {
     pub name: String,
     pub admin: Addr,
     pub symbol: String,
     pub decimals: u8,
+    pub prng_seed: Vec<u8>,
     // privacy configuration
     pub total_supply_is_public: bool,
     // is deposit enabled
@@ -45,67 +134,96 @@ pub struct Config {
     pub burn_is_enabled: bool,
     // the address of this contract, used to validate query permits
     pub contract_address: Addr,
-    // coin denoms that are supported for deposit/redeem
-    pub supported_denoms: Vec<String>,
-    // can admin add or remove supported denoms
-    pub can_modify_denoms: bool,
 }
 
-pub static CONFIG: Item<Config> = Item::new(KEY_CONFIG);
-
-pub static TOTAL_SUPPLY: Item<u128> = Item::new(KEY_TOTAL_SUPPLY);
-
-pub static CONTRACT_STATUS: Item<ContractStatusLevel, Json> = Item::new(KEY_CONTRACT_STATUS);
-
-pub static PRNG: Item<[u8; SHA256_HASH_SIZE]> = Item::new(KEY_PRNG);
-
-pub static MINTERS: Item<Vec<Addr>> = Item::new(KEY_MINTERS);
-
-pub static TX_COUNT: Item<u64> = Item::new(KEY_TX_COUNT);
-
-pub struct PrngStore {}
-impl PrngStore {
-    pub fn load(store: &dyn Storage) -> StdResult<[u8; SHA256_HASH_SIZE]> {
-        PRNG.load(store).map_err(|_err| StdError::generic_err(""))
+pub struct ConfigStore {}
+impl ConfigStore {
+    pub fn load_constants(store: &dyn Storage) -> StdResult<Constants> {
+        let config_store = prefixed_read(store, PREFIX_CONFIG);
+        let consts_bytes = config_store
+            .get(KEY_CONSTANTS)
+            .ok_or_else(|| StdError::generic_err("no constants stored in configuration"))?;
+        bincode2::deserialize::<Constants>(&consts_bytes)
+            .map_err(|e| StdError::serialize_err(type_name::<Constants>(), e))
     }
 
-    pub fn save(store: &mut dyn Storage, prng_seed: [u8; SHA256_HASH_SIZE]) -> StdResult<()> {
-        PRNG.save(store, &prng_seed)
+    pub fn load_total_supply(store: &dyn Storage) -> StdResult<u128> {
+        let config_store = prefixed_read(store, PREFIX_CONFIG);
+        let supply_bytes = config_store
+            .get(KEY_TOTAL_SUPPLY)
+            .expect("no total supply stored in config");
+        // This unwrap is ok because we know we stored things correctly
+        slice_to_u128(&supply_bytes)
+    }
+
+    pub fn load_contract_status(store: &dyn Storage) -> StdResult<ContractStatusLevel> {
+        let config_store = prefixed_read(store, PREFIX_CONFIG);
+        let supply_bytes = config_store
+            .get(KEY_CONTRACT_STATUS)
+            .expect("no contract status stored in config");
+
+        // These unwraps are ok because we know we stored things correctly
+        let status = slice_to_u8(&supply_bytes).unwrap();
+        u8_to_status_level(status)
+    }
+
+    pub fn load_tx_count(store: &dyn Storage) -> u64 {
+        let config_store = prefixed_read(store, PREFIX_CONFIG);
+        get_bin_data(config_store, KEY_TX_COUNT).unwrap_or_default()
+    }
+
+    pub fn set_constants(store: &mut dyn Storage, constants: &Constants) -> StdResult<()> {
+        let mut config_store = prefixed(store, PREFIX_CONFIG);
+        set_bin_data(&mut config_store, KEY_CONSTANTS, constants)
+    }
+
+    pub fn set_total_supply(store: &mut dyn Storage, supply: &u128) -> StdResult<()> {
+        let mut config_store = prefixed(store, PREFIX_CONFIG);
+        config_store.set(KEY_TOTAL_SUPPLY, &supply.to_be_bytes());
+        Ok(())
+    }
+
+    pub fn set_contract_status(
+        store: &mut dyn Storage,
+        status: &ContractStatusLevel,
+    ) -> StdResult<()> {
+        let mut config_store = prefixed(store, PREFIX_CONFIG);
+        let status_u8 = status_level_to_u8(status);
+        config_store.set(KEY_CONTRACT_STATUS, &status_u8.to_be_bytes());
+        Ok(())
+    }
+
+    pub fn set_tx_count(store: &mut dyn Storage, count: &u64) -> StdResult<()> {
+        let mut config_store = prefixed(store, PREFIX_CONFIG);
+        set_bin_data(&mut config_store, KEY_TX_COUNT, &count)
     }
 }
 
-pub struct MintersStore {}
-impl MintersStore {
-    pub fn load(store: &dyn Storage) -> StdResult<Vec<Addr>> {
-        MINTERS
-            .load(store)
-            .map_err(|_err| StdError::generic_err(""))
-    }
+fn ser_bin_data<T: Serialize>(obj: &T) -> StdResult<Vec<u8>> {
+    bincode2::serialize(&obj).map_err(|e| StdError::serialize_err(type_name::<T>(), e))
+}
 
-    pub fn save(store: &mut dyn Storage, minters_to_set: Vec<Addr>) -> StdResult<()> {
-        MINTERS.save(store, &minters_to_set)
-    }
+fn deser_bin_data<T: DeserializeOwned>(data: &[u8]) -> StdResult<T> {
+    bincode2::deserialize::<T>(data).map_err(|e| StdError::serialize_err(type_name::<T>(), e))
+}
 
-    pub fn add_minters(store: &mut dyn Storage, minters_to_add: Vec<Addr>) -> StdResult<()> {
-        let mut loaded_minters = MINTERS
-            .load(store)
-            .map_err(|_err| StdError::not_found("Key not found in storage"))?;
+fn set_bin_data<T: Serialize>(
+    storage: &mut PrefixedStorage,
+    key: &[u8],
+    data: &T,
+) -> StdResult<()> {
+    let bin_data = ser_bin_data(data)?;
 
-        loaded_minters.extend(minters_to_add);
+    storage.set(key, &bin_data);
+    Ok(())
+}
 
-        MINTERS.save(store, &loaded_minters)
-    }
+fn get_bin_data<T: DeserializeOwned>(storage: ReadonlyPrefixedStorage, key: &[u8]) -> StdResult<T> {
+    let bin_data = storage.get(key);
 
-    pub fn remove_minters(store: &mut dyn Storage, minters_to_remove: Vec<Addr>) -> StdResult<()> {
-        let mut loaded_minters = MINTERS
-            .load(store)
-            .map_err(|_err| StdError::generic_err(""))?;
-
-        for minter in minters_to_remove {
-            loaded_minters.retain(|x| x != &minter);
-        }
-
-        MINTERS.save(store, &loaded_minters)
+    match bin_data {
+        None => Err(StdError::not_found("Key not found in storage")),
+        Some(bin_data) => Ok(deser_bin_data(&bin_data)?),
     }
 }
 
@@ -127,7 +245,7 @@ pub struct BalancesStore {}
 impl BalancesStore {
     fn save(store: &mut dyn Storage, account: &CanonicalAddr, amount: u128) -> () {
         let mut balances = prefixed(store, PREFIX_BALANCES);
-        balances.set(&account.as_slice(), &amount.to_be_bytes());
+        balances.set(account.as_slice(), &amount.to_be_bytes());
     }
 
     pub fn load(store: &dyn Storage, account: &CanonicalAddr) -> u128 {
@@ -349,5 +467,17 @@ fn slice_to_u128(data: &[u8]) -> StdResult<u128> {
         Err(_) => Err(StdError::generic_err(
             "Corrupted data found. 16 byte expected.",
         )),
+    }
+}
+
+/// Converts 1 byte value into u8
+/// Errors if data found that is not 1 byte
+fn slice_to_u8(data: &[u8]) -> StdResult<u8> {
+    if data.len() == 1 {
+        Ok(data[0])
+    } else {
+        Err(StdError::generic_err(
+            "Corrupted data found. 1 byte expected.",
+        ))
     }
 }

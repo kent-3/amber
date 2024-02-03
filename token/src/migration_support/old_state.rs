@@ -147,7 +147,7 @@ impl<'a> Config<'a> {
     }
 
     pub fn set_contract_status(&mut self, status: ContractStatusLevel) {
-        let status_u8 = status_level_to_u8(status);
+        let status_u8 = status_level_to_u8(&status);
         self.storage
             .set(KEY_CONTRACT_STATUS, &status_u8.to_be_bytes());
     }

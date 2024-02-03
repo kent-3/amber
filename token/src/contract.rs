@@ -14,8 +14,8 @@ use secret_toolkit::utils::{pad_handle_result, pad_query_result};
 use secret_toolkit_crypto::{sha_256, ContractPrng, SHA256_HASH_SIZE};
 
 use crate::batch;
-use crate::migration_support::old_state::Config as OldConfig;
 use crate::migration_support::viewing_key::{ViewingKey, ViewingKeyStore};
+use crate::msg::MigrateAnswer;
 use crate::msg::{
     AllowanceGivenResult, AllowanceReceivedResult, ContractStatusLevel, Decoyable, ExecuteAnswer,
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryAnswer, QueryMsg, QueryWithPermit,
@@ -23,8 +23,8 @@ use crate::msg::{
 };
 use crate::receiver::Snip20ReceiveMsg;
 use crate::state::{
-    safe_add, AllowancesStore, BalancesStore, Config, MintersStore, PrngStore, ReceiverHashStore,
-    CONFIG, CONTRACT_STATUS, MINTERS, PRNG, TOTAL_SUPPLY, TX_COUNT,
+    safe_add, AllowancesStore, BalancesStore, ConfigStore, Constants, MintersStore, PrngStore,
+    ReceiverHashStore,
 };
 use crate::transaction_history::{
     store_burn, store_deposit, store_mint, store_redeem, store_transfer, StoredExtendedTx,
@@ -36,51 +36,10 @@ pub const RESPONSE_BLOCK_SIZE: usize = 256;
 pub const PREFIX_REVOKED_PERMITS: &str = "revoked_permits";
 
 #[entry_point]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> StdResult<Response> {
+pub fn migrate(_deps: DepsMut, _env: Env, msg: MigrateMsg) -> StdResult<Response> {
     match msg {
-        // TODO - don't migrate any data... modify state.rs to match the original Config, etc
         MigrateMsg::Migrate {} => {
-            let old_config = OldConfig::from_storage(deps.storage);
-            let constants = old_config.constants()?;
-
-            let config = Config {
-                name: constants.name,
-                admin: deps.api.addr_validate(constants.admin.as_str())?,
-                symbol: constants.symbol,
-                decimals: constants.decimals,
-                total_supply_is_public: constants.total_supply_is_public,
-                deposit_is_enabled: constants.deposit_is_enabled,
-                redeem_is_enabled: constants.redeem_is_enabled,
-                mint_is_enabled: constants.mint_is_enabled,
-                burn_is_enabled: constants.burn_is_enabled,
-                contract_address: deps
-                    .api
-                    .addr_validate(constants.contract_address.as_str())?,
-                supported_denoms: vec![],
-                can_modify_denoms: true,
-            };
-            let total_supply = old_config.total_supply();
-            let contract_status = old_config.contract_status();
-            let prng_seed = constants
-                .prng_seed
-                .as_slice()
-                .try_into()
-                .expect("seed was not 32 bytes");
-            let minters = old_config.minters();
-            let minters = minters
-                .iter()
-                .map(|addr| Addr::unchecked(addr.as_str()))
-                .collect();
-            let tx_count = old_config.tx_count();
-
-            CONFIG.save(deps.storage, &config)?;
-            TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
-            CONTRACT_STATUS.save(deps.storage, &contract_status)?;
-            PRNG.save(deps.storage, prng_seed)?;
-            MINTERS.save(deps.storage, &minters)?;
-            TX_COUNT.save(deps.storage, &tx_count)?;
-
-            Ok(Response::default())
+            Ok(Response::new().set_data(to_binary(&MigrateAnswer::Migrate { status: Success })?))
         }
     }
 }
@@ -117,7 +76,7 @@ pub fn instantiate(
     let mut total_supply: u128 = 0;
 
     let prng_seed_hashed = sha_256(&msg.prng_seed.0);
-    PrngStore::save(deps.storage, prng_seed_hashed)?;
+    // PrngStore::save(deps.storage, prng_seed_hashed)?;
 
     {
         let admin = deps.api.addr_canonicalize(admin.as_str())?;
@@ -159,30 +118,30 @@ pub fn instantiate(
         }
     }
 
-    let supported_denoms = match msg.supported_denoms {
+    let _supported_denoms = match msg.supported_denoms {
         None => vec![],
         Some(x) => x,
     };
 
-    CONFIG.save(
+    ConfigStore::set_constants(
         deps.storage,
-        &Config {
+        &Constants {
             name: msg.name,
+            admin: admin.clone(),
             symbol: msg.symbol,
             decimals: msg.decimals,
-            admin: admin.clone(),
+            prng_seed: prng_seed_hashed.to_vec(),
             total_supply_is_public: init_config.public_total_supply(),
             deposit_is_enabled: init_config.deposit_enabled(),
             redeem_is_enabled: init_config.redeem_enabled(),
             mint_is_enabled: init_config.mint_enabled(),
             burn_is_enabled: init_config.burn_enabled(),
             contract_address: env.contract.address,
-            supported_denoms,
-            can_modify_denoms: init_config.can_modify_denoms(),
         },
     )?;
-    TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
-    CONTRACT_STATUS.save(deps.storage, &ContractStatusLevel::NormalRun)?;
+    ConfigStore::set_total_supply(deps.storage, &total_supply)?;
+    ConfigStore::set_contract_status(deps.storage, &ContractStatusLevel::NormalRun)?;
+
     let minters = if init_config.mint_enabled() {
         Vec::from([admin])
     } else {
@@ -214,7 +173,7 @@ fn get_address_position(
 
 #[entry_point]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
-    let contract_status = CONTRACT_STATUS.load(deps.storage)?;
+    let contract_status = ConfigStore::load_contract_status(deps.storage)?;
 
     let mut account_random_pos: Option<usize> = None;
 
@@ -452,7 +411,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 fn permit_queries(deps: Deps, permit: Permit, query: QueryWithPermit) -> Result<Binary, StdError> {
     // Validate permit content
-    let token_address = CONFIG.load(deps.storage)?.contract_address;
+    let token_address = ConfigStore::load_constants(deps.storage)?.contract_address;
 
     let account = secret_toolkit::permit::validate(
         deps,
@@ -660,7 +619,7 @@ pub fn viewing_keys_queries(deps: Deps, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_exchange_rate(storage: &dyn Storage) -> StdResult<Binary> {
-    let constants = CONFIG.load(storage)?;
+    let constants = ConfigStore::load_constants(storage)?;
 
     if constants.deposit_is_enabled || constants.redeem_is_enabled {
         let rate: Uint128;
@@ -683,10 +642,10 @@ fn query_exchange_rate(storage: &dyn Storage) -> StdResult<Binary> {
 }
 
 fn query_token_info(storage: &dyn Storage) -> StdResult<Binary> {
-    let constants = CONFIG.load(storage)?;
+    let constants = ConfigStore::load_constants(storage)?;
 
     let total_supply = if constants.total_supply_is_public {
-        Some(Uint128::new(TOTAL_SUPPLY.load(storage)?))
+        Some(Uint128::new(ConfigStore::load_total_supply(storage)?))
     } else {
         None
     };
@@ -700,7 +659,7 @@ fn query_token_info(storage: &dyn Storage) -> StdResult<Binary> {
 }
 
 fn query_token_config(storage: &dyn Storage) -> StdResult<Binary> {
-    let constants = CONFIG.load(storage)?;
+    let constants = ConfigStore::load_constants(storage)?;
 
     to_binary(&QueryAnswer::TokenConfig {
         public_total_supply: constants.total_supply_is_public,
@@ -708,12 +667,12 @@ fn query_token_config(storage: &dyn Storage) -> StdResult<Binary> {
         redeem_enabled: constants.redeem_is_enabled,
         mint_enabled: constants.mint_is_enabled,
         burn_enabled: constants.burn_is_enabled,
-        supported_denoms: constants.supported_denoms,
+        // supported_denoms: constants.supported_denoms,
     })
 }
 
 fn query_contract_status(storage: &dyn Storage) -> StdResult<Binary> {
-    let contract_status = CONTRACT_STATUS.load(storage)?;
+    let contract_status = ConfigStore::load_contract_status(storage)?;
 
     to_binary(&QueryAnswer::ContractStatus {
         status: contract_status,
@@ -824,69 +783,71 @@ fn query_minters(deps: Deps) -> StdResult<Binary> {
 fn change_admin(deps: DepsMut, info: MessageInfo, address: String) -> StdResult<Response> {
     let address = deps.api.addr_validate(address.as_str())?;
 
-    let mut constants = CONFIG.load(deps.storage)?;
+    let mut constants = ConfigStore::load_constants(deps.storage)?;
     check_if_admin(&constants.admin, &info.sender)?;
 
     constants.admin = address;
-    CONFIG.save(deps.storage, &constants)?;
+    ConfigStore::set_constants(deps.storage, &constants)?;
 
     Ok(Response::new().set_data(to_binary(&ExecuteAnswer::ChangeAdmin { status: Success })?))
 }
 
 fn add_supported_denoms(
-    deps: DepsMut,
-    info: MessageInfo,
-    denoms: Vec<String>,
+    _deps: DepsMut,
+    _info: MessageInfo,
+    _denoms: Vec<String>,
 ) -> StdResult<Response> {
-    let mut config = CONFIG.load(deps.storage)?;
-
-    check_if_admin(&config.admin, &info.sender)?;
-    if !config.can_modify_denoms {
-        return Err(StdError::generic_err(
-            "Cannot modify denoms for this contract",
-        ));
-    }
-
-    for denom in denoms.iter() {
-        if !config.supported_denoms.contains(denom) {
-            config.supported_denoms.push(denom.clone());
-        }
-    }
-
-    CONFIG.save(deps.storage, &config)?;
-
-    Ok(
-        Response::new().set_data(to_binary(&ExecuteAnswer::AddSupportedDenoms {
-            status: Success,
-        })?),
-    )
+    unimplemented!()
+    // let mut config = ConfigStore::load_constants(deps.storage)?;
+    //
+    // check_if_admin(&config.admin, &info.sender)?;
+    // if !config.can_modify_denoms {
+    //     return Err(StdError::generic_err(
+    //         "Cannot modify denoms for this contract",
+    //     ));
+    // }
+    //
+    // for denom in denoms.iter() {
+    //     if !config.supported_denoms.contains(denom) {
+    //         config.supported_denoms.push(denom.clone());
+    //     }
+    // }
+    //
+    // ConfigStore::set_constants(deps.storage, &config)?;
+    //
+    // Ok(
+    //     Response::new().set_data(to_binary(&ExecuteAnswer::AddSupportedDenoms {
+    //         status: Success,
+    //     })?),
+    // )
 }
 
 fn remove_supported_denoms(
-    deps: DepsMut,
-    info: MessageInfo,
-    denoms: Vec<String>,
+    _deps: DepsMut,
+    _info: MessageInfo,
+    _denoms: Vec<String>,
 ) -> StdResult<Response> {
-    let mut config = CONFIG.load(deps.storage)?;
-
-    check_if_admin(&config.admin, &info.sender)?;
-    if !config.can_modify_denoms {
-        return Err(StdError::generic_err(
-            "Cannot modify denoms for this contract",
-        ));
-    }
-
-    for denom in denoms.iter() {
-        config.supported_denoms.retain(|x| x != denom);
-    }
-
-    CONFIG.save(deps.storage, &config)?;
-
-    Ok(
-        Response::new().set_data(to_binary(&ExecuteAnswer::RemoveSupportedDenoms {
-            status: Success,
-        })?),
-    )
+    unimplemented!()
+    // let mut config = ConfigStore::load_constants(deps.storage)?;
+    //
+    // check_if_admin(&config.admin, &info.sender)?;
+    // if !config.can_modify_denoms {
+    //     return Err(StdError::generic_err(
+    //         "Cannot modify denoms for this contract",
+    //     ));
+    // }
+    //
+    // for denom in denoms.iter() {
+    //     config.supported_denoms.retain(|x| x != denom);
+    // }
+    //
+    // ConfigStore::set_constants(deps.storage, &config)?;
+    //
+    // Ok(
+    //     Response::new().set_data(to_binary(&ExecuteAnswer::RemoveSupportedDenoms {
+    //         status: Success,
+    //     })?),
+    // )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -945,7 +906,7 @@ fn try_mint(
 ) -> StdResult<Response> {
     let recipient = deps.api.addr_validate(recipient.as_str())?;
 
-    let constants = CONFIG.load(deps.storage)?;
+    let constants = ConfigStore::load_constants(deps.storage)?;
 
     if !constants.mint_is_enabled {
         return Err(StdError::generic_err(
@@ -960,9 +921,9 @@ fn try_mint(
         ));
     }
 
-    let mut total_supply = TOTAL_SUPPLY.load(deps.storage)?;
+    let mut total_supply = ConfigStore::load_total_supply(deps.storage)?;
     let minted_amount = safe_add(&mut total_supply, amount.u128());
-    TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
+    ConfigStore::set_total_supply(deps.storage, &total_supply)?;
 
     // Note that even when minted_amount is equal to 0 we still want to perform the operations for logic consistency
     try_mint_impl(
@@ -987,7 +948,7 @@ fn try_batch_mint(
     actions: Vec<batch::MintAction>,
     account_random_pos: Option<usize>,
 ) -> StdResult<Response> {
-    let constants = CONFIG.load(deps.storage)?;
+    let constants = ConfigStore::load_constants(deps.storage)?;
 
     if !constants.mint_is_enabled {
         return Err(StdError::generic_err(
@@ -1002,7 +963,7 @@ fn try_batch_mint(
         ));
     }
 
-    let mut total_supply = TOTAL_SUPPLY.load(deps.storage)?;
+    let mut total_supply = ConfigStore::load_total_supply(deps.storage)?;
 
     // Quick loop to check that the total of amounts is valid
     for action in actions {
@@ -1022,7 +983,7 @@ fn try_batch_mint(
         )?;
     }
 
-    TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
+    ConfigStore::set_total_supply(deps.storage, &total_supply)?;
 
     Ok(Response::new().set_data(to_binary(&ExecuteAnswer::BatchMint { status: Success })?))
 }
@@ -1060,10 +1021,10 @@ fn set_contract_status(
     info: MessageInfo,
     status_level: ContractStatusLevel,
 ) -> StdResult<Response> {
-    let constants = CONFIG.load(deps.storage)?;
+    let constants = ConfigStore::load_constants(deps.storage)?;
     check_if_admin(&constants.admin, &info.sender)?;
 
-    CONTRACT_STATUS.save(deps.storage, &status_level)?;
+    ConfigStore::set_contract_status(deps.storage, &status_level)?;
 
     Ok(
         Response::new().set_data(to_binary(&ExecuteAnswer::SetContractStatus {
@@ -1162,19 +1123,20 @@ fn try_deposit(
     decoys: Option<Vec<Addr>>,
     account_random_pos: Option<usize>,
 ) -> StdResult<Response> {
-    let constants = CONFIG.load(deps.storage)?;
+    let constants = ConfigStore::load_constants(deps.storage)?;
 
     let mut amount = Uint128::zero();
 
+    // NOTE - supported_denoms is not part of the config due to migrating from snip24
     for coin in &info.funds {
-        if constants.supported_denoms.contains(&coin.denom) {
-            amount += coin.amount
-        } else {
-            return Err(StdError::generic_err(format!(
-                "Tried to deposit an unsupported coin {}",
-                coin.denom
-            )));
-        }
+        // if constants.supported_denoms.contains(&coin.denom) {
+        amount += coin.amount
+        // } else {
+        //     return Err(StdError::generic_err(format!(
+        //         "Tried to deposit an unsupported coin {}",
+        //         coin.denom
+        //     )));
+        // }
     }
 
     if amount.is_zero() {
@@ -1189,9 +1151,9 @@ fn try_deposit(
         ));
     }
 
-    let mut total_supply = TOTAL_SUPPLY.load(deps.storage)?;
+    let mut total_supply = ConfigStore::load_total_supply(deps.storage)?;
     raw_amount = safe_add(&mut total_supply, raw_amount);
-    TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
+    ConfigStore::set_total_supply(deps.storage, &total_supply)?;
 
     let sender_address = &deps.api.addr_canonicalize(info.sender.as_str())?;
     let decoys = convert_decoys(&decoys, deps.api)?;
@@ -1219,34 +1181,6 @@ fn try_deposit(
     Ok(Response::new().set_data(to_binary(&ExecuteAnswer::Deposit { status: Success })?))
 }
 
-/// Transform the decoys to CanonicalAddr
-fn convert_decoys(
-    decoys: &Option<Vec<Addr>>,
-    api: &dyn Api,
-) -> StdResult<Option<Vec<CanonicalAddr>>> {
-    if let Some(decoys_vec) = decoys {
-        let mut canonical_decoys_vec = Vec::with_capacity(decoys_vec.len());
-        for decoy in decoys_vec {
-            canonical_decoys_vec.push(api.addr_canonicalize(decoy.as_str())?)
-        }
-        Ok(Some(canonical_decoys_vec))
-    } else {
-        Ok(None)
-    }
-}
-
-// unsure if better
-fn _alt_convert_decoys(
-    decoys: Vec<Addr>, // Take ownership of Vec<Addr>
-    api: &dyn Api,
-) -> StdResult<Vec<CanonicalAddr>> {
-    // Directly return a Vec<CanonicalAddr>
-    decoys
-        .into_iter() // Consumes `decoys`, no need to clone or borrow
-        .map(|decoy| api.addr_canonicalize(decoy.as_str()))
-        .collect() // Collects into a Result<Vec<CanonicalAddr>, Error>
-}
-
 fn try_redeem(
     deps: DepsMut,
     env: Env,
@@ -1256,27 +1190,36 @@ fn try_redeem(
     decoys: Option<Vec<Addr>>,
     account_random_pos: Option<usize>,
 ) -> StdResult<Response> {
-    let constants = CONFIG.load(deps.storage)?;
+    let constants = ConfigStore::load_constants(deps.storage)?;
     if !constants.redeem_is_enabled {
         return Err(StdError::generic_err(
             "Redeem functionality is not enabled for this token.",
         ));
     }
 
-    // if denom is none and there is only 1 supported denom then we don't need to check anything
-    let withdraw_denom = if denom.is_none() && constants.supported_denoms.len() == 1 {
-        constants.supported_denoms.first().unwrap().clone()
-    // if denom is specified make sure it's on the list before trying to withdraw with it
-    } else if denom.is_some() && constants.supported_denoms.contains(denom.as_ref().unwrap()) {
-        denom.unwrap()
-    // error handling
-    } else if denom.is_none() {
-        return Err(StdError::generic_err(
-            "Tried to redeem without specifying denom, but multiple coins are supported",
-        ));
+    // NOTE - supported_denoms is not part of the config due to migrating from snip24
+    // // if denom is none and there is only 1 supported denom then we don't need to check anything
+    // let withdraw_denom = if denom.is_none() && constants.supported_denoms.len() == 1 {
+    //     constants.supported_denoms.first().unwrap().clone()
+    // // if denom is specified make sure it's on the list before trying to withdraw with it
+    // } else if denom.is_some() && constants.supported_denoms.contains(denom.as_ref().unwrap()) {
+    //     denom.unwrap()
+    // // error handling
+    // } else if denom.is_none() {
+    //     return Err(StdError::generic_err(
+    //         "Tried to redeem without specifying denom, but multiple coins are supported",
+    //     ));
+    // } else {
+    //     return Err(StdError::generic_err(
+    //         "Tried to redeem for an unsupported coin",
+    //     ));
+    // };
+
+    let withdraw_denom = if let Some(denom) = denom {
+        denom
     } else {
         return Err(StdError::generic_err(
-            "Tried to redeem for an unsupported coin",
+            "Tried to redeem without specifying denom",
         ));
     };
 
@@ -1295,9 +1238,9 @@ fn try_redeem(
         &account_random_pos,
     )?;
 
-    let total_supply = TOTAL_SUPPLY.load(deps.storage)?;
+    let total_supply = ConfigStore::load_total_supply(deps.storage)?;
     if let Some(total_supply) = total_supply.checked_sub(amount_raw) {
-        TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
+        ConfigStore::set_total_supply(deps.storage, &total_supply)?;
     } else {
         return Err(StdError::generic_err(
             "You are trying to redeem more tokens than what is available in the total supply",
@@ -1362,7 +1305,7 @@ fn try_transfer_impl(
         &account_random_pos,
     )?;
 
-    let symbol = CONFIG.load(deps.storage)?.symbol;
+    let symbol = ConfigStore::load_constants(deps.storage)?.symbol;
     store_transfer(
         deps.storage,
         &sender,
@@ -1641,7 +1584,7 @@ fn try_transfer_from_impl(
         &account_random_pos,
     )?;
 
-    let symbol = CONFIG.load(deps.storage)?.symbol;
+    let symbol = ConfigStore::load_constants(deps.storage)?.symbol;
     store_transfer(
         deps.storage,
         owner,
@@ -1844,7 +1787,7 @@ fn try_burn_from(
     account_random_pos: Option<usize>,
 ) -> StdResult<Response> {
     let owner = deps.api.addr_validate(owner.as_str())?;
-    let constants = CONFIG.load(deps.storage)?;
+    let constants = ConfigStore::load_constants(deps.storage)?;
     if !constants.burn_is_enabled {
         return Err(StdError::generic_err(
             "Burn functionality is not enabled for this token.",
@@ -1869,7 +1812,7 @@ fn try_burn_from(
     )?;
 
     // remove from supply
-    let mut total_supply = TOTAL_SUPPLY.load(deps.storage)?;
+    let mut total_supply = ConfigStore::load_total_supply(deps.storage)?;
 
     if let Some(new_total_supply) = total_supply.checked_sub(raw_amount) {
         total_supply = new_total_supply;
@@ -1878,7 +1821,7 @@ fn try_burn_from(
             "You're trying to burn more than is available in the total supply",
         ));
     }
-    TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
+    ConfigStore::set_total_supply(deps.storage, &total_supply)?;
 
     store_burn(
         deps.storage,
@@ -1902,7 +1845,7 @@ fn try_batch_burn_from(
     actions: Vec<batch::BurnFromAction>,
     account_random_pos: Option<usize>,
 ) -> StdResult<Response> {
-    let constants = CONFIG.load(deps.storage)?;
+    let constants = ConfigStore::load_constants(deps.storage)?;
     if !constants.burn_is_enabled {
         return Err(StdError::generic_err(
             "Burn functionality is not enabled for this token.",
@@ -1910,7 +1853,7 @@ fn try_batch_burn_from(
     }
 
     let spender = info.sender;
-    let mut total_supply = TOTAL_SUPPLY.load(deps.storage)?;
+    let mut total_supply = ConfigStore::load_total_supply(deps.storage)?;
 
     for action in actions {
         let owner = deps.api.addr_validate(action.owner.as_str())?;
@@ -1954,7 +1897,7 @@ fn try_batch_burn_from(
         )?;
     }
 
-    TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
+    ConfigStore::set_total_supply(deps.storage, &total_supply)?;
 
     Ok(
         Response::new().set_data(to_binary(&ExecuteAnswer::BatchBurnFrom {
@@ -2040,7 +1983,7 @@ fn add_minters(
     info: MessageInfo,
     minters_to_add: Vec<String>,
 ) -> StdResult<Response> {
-    let constants = CONFIG.load(deps.storage)?;
+    let constants = ConfigStore::load_constants(deps.storage)?;
     if !constants.mint_is_enabled {
         return Err(StdError::generic_err(
             "Mint functionality is not enabled for this token.",
@@ -2063,7 +2006,7 @@ fn remove_minters(
     info: MessageInfo,
     minters_to_remove: Vec<String>,
 ) -> StdResult<Response> {
-    let constants = CONFIG.load(deps.storage)?;
+    let constants = ConfigStore::load_constants(deps.storage)?;
     if !constants.mint_is_enabled {
         return Err(StdError::generic_err(
             "Mint functionality is not enabled for this token.",
@@ -2090,7 +2033,7 @@ fn set_minters(
     info: MessageInfo,
     minters_to_set: Vec<String>,
 ) -> StdResult<Response> {
-    let constants = CONFIG.load(deps.storage)?;
+    let constants = ConfigStore::load_constants(deps.storage)?;
     if !constants.mint_is_enabled {
         return Err(StdError::generic_err(
             "Mint functionality is not enabled for this token.",
@@ -2122,7 +2065,7 @@ fn try_burn(
     decoys: Option<Vec<Addr>>,
     account_random_pos: Option<usize>,
 ) -> StdResult<Response> {
-    let constants = CONFIG.load(deps.storage)?;
+    let constants = ConfigStore::load_constants(deps.storage)?;
     if !constants.burn_is_enabled {
         return Err(StdError::generic_err(
             "Burn functionality is not enabled for this token.",
@@ -2144,7 +2087,7 @@ fn try_burn(
         &account_random_pos,
     )?;
 
-    let mut total_supply = TOTAL_SUPPLY.load(deps.storage)?;
+    let mut total_supply = ConfigStore::load_total_supply(deps.storage)?;
     if let Some(new_total_supply) = total_supply.checked_sub(raw_amount) {
         total_supply = new_total_supply;
     } else {
@@ -2152,7 +2095,7 @@ fn try_burn(
             "You're trying to burn more than is available in the total supply",
         ));
     }
-    TOTAL_SUPPLY.save(deps.storage, &total_supply)?;
+    ConfigStore::set_total_supply(deps.storage, &total_supply)?;
 
     store_burn(
         deps.storage,
@@ -2222,6 +2165,34 @@ fn is_valid_symbol(symbol: &str) -> bool {
     let len_is_valid = (3..=20).contains(&len);
 
     len_is_valid && symbol.bytes().all(|byte| byte.is_ascii_alphabetic())
+}
+
+/// Transform the decoys to CanonicalAddr
+fn convert_decoys(
+    decoys: &Option<Vec<Addr>>,
+    api: &dyn Api,
+) -> StdResult<Option<Vec<CanonicalAddr>>> {
+    if let Some(decoys_vec) = decoys {
+        let mut canonical_decoys_vec = Vec::with_capacity(decoys_vec.len());
+        for decoy in decoys_vec {
+            canonical_decoys_vec.push(api.addr_canonicalize(decoy.as_str())?)
+        }
+        Ok(Some(canonical_decoys_vec))
+    } else {
+        Ok(None)
+    }
+}
+
+// unsure if better
+fn _alt_convert_decoys(
+    decoys: Vec<Addr>, // Take ownership of Vec<Addr>
+    api: &dyn Api,
+) -> StdResult<Vec<CanonicalAddr>> {
+    // Directly return a Vec<CanonicalAddr>
+    decoys
+        .into_iter() // Consumes `decoys`, no need to clone or borrow
+        .map(|decoy| api.addr_canonicalize(decoy.as_str()))
+        .collect() // Collects into a Result<Vec<CanonicalAddr>, Error>
 }
 
 #[cfg(test)]
@@ -2399,10 +2370,10 @@ mod tests {
         }]);
         assert_eq!(init_result.unwrap(), Response::default());
 
-        let constants = CONFIG.load(&deps.storage).unwrap();
-        assert_eq!(TOTAL_SUPPLY.load(&deps.storage).unwrap(), 5000);
+        let constants = ConfigStore::load_constants(&deps.storage).unwrap();
+        assert_eq!(ConfigStore::load_total_supply(&deps.storage).unwrap(), 5000);
         assert_eq!(
-            CONTRACT_STATUS.load(&deps.storage).unwrap(),
+            ConfigStore::load_contract_status(&deps.storage).unwrap(),
             ContractStatusLevel::NormalRun
         );
         assert_eq!(constants.name, "sec-sec".to_string());
@@ -2436,10 +2407,10 @@ mod tests {
         );
         assert_eq!(init_result.unwrap(), Response::default());
 
-        let constants = CONFIG.load(&deps.storage).unwrap();
-        assert_eq!(TOTAL_SUPPLY.load(&deps.storage).unwrap(), 5000);
+        let constants = ConfigStore::load_constants(&deps.storage).unwrap();
+        assert_eq!(ConfigStore::load_total_supply(&deps.storage).unwrap(), 5000);
         assert_eq!(
-            CONTRACT_STATUS.load(&deps.storage).unwrap(),
+            ConfigStore::load_contract_status(&deps.storage).unwrap(),
             ContractStatusLevel::NormalRun
         );
         assert_eq!(constants.name, "sec-sec".to_string());
@@ -3129,7 +3100,7 @@ mod tests {
         let alice_balance = BalancesStore::load(&deps.storage, &alice_canonical);
         assert_eq!(bob_balance, 5000 - 2000);
         assert_eq!(alice_balance, 2000);
-        let total_supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
+        let total_supply = ConfigStore::load_total_supply(&deps.storage).unwrap();
         assert_eq!(total_supply, 5000);
 
         // Second send more than allowance
@@ -3277,7 +3248,7 @@ mod tests {
         let contract_balance = BalancesStore::load(&deps.storage, &canon_contract_addr);
         assert_eq!(bob_balance, 5000 - 2000);
         assert_eq!(contract_balance, 2000);
-        let total_supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
+        let total_supply = ConfigStore::load_total_supply(&deps.storage).unwrap();
         assert_eq!(total_supply, 5000);
 
         // Second send more than allowance
@@ -3414,7 +3385,7 @@ mod tests {
         let bob_canonical = deps.api.addr_canonicalize(bob_addr.as_str()).unwrap();
         let bob_balance = BalancesStore::load(&deps.storage, &bob_canonical);
         assert_eq!(bob_balance, 10000 - 2000);
-        let total_supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
+        let total_supply = ConfigStore::load_total_supply(&deps.storage).unwrap();
         assert_eq!(total_supply, 10000 - 2000);
 
         // Second burn more than allowance
@@ -3570,7 +3541,7 @@ mod tests {
             let balance = BalancesStore::load(&deps.storage, &name_canonical);
             assert_eq!(balance, 10000 - amount);
         }
-        let total_supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
+        let total_supply = ConfigStore::load_total_supply(&deps.storage).unwrap();
         assert_eq!(total_supply, 10000 * 3 - (200 + 300 + 400));
 
         // Burn the rest of the allowance
@@ -3604,7 +3575,7 @@ mod tests {
             let balance = BalancesStore::load(&deps.storage, &name_canonical);
             assert_eq!(balance, 10000 - allowance_size);
         }
-        let total_supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
+        let total_supply = ConfigStore::load_total_supply(&deps.storage).unwrap();
         assert_eq!(total_supply, 3 * (10000 - allowance_size));
 
         // Second burn more than allowance
@@ -3807,7 +3778,7 @@ mod tests {
             handle_result.err().unwrap()
         );
 
-        let admin = CONFIG.load(&deps.storage).unwrap().admin;
+        let admin = ConfigStore::load_constants(&deps.storage).unwrap().admin;
         assert_eq!(admin, Addr::unchecked("bob".to_string()));
     }
 
@@ -3837,7 +3808,7 @@ mod tests {
             handle_result.err().unwrap()
         );
 
-        let contract_status = CONTRACT_STATUS.load(&deps.storage).unwrap();
+        let contract_status = ConfigStore::load_contract_status(&deps.storage).unwrap();
         assert!(matches!(
             contract_status,
             ContractStatusLevel::StopAll { .. }
@@ -4082,7 +4053,7 @@ mod tests {
         let error = extract_error_msg(handle_result);
         assert!(error.contains("Burn functionality is not enabled for this token."));
 
-        let supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
+        let supply = ConfigStore::load_total_supply(&deps.storage).unwrap();
         let burn_amount: u128 = 100;
         let handle_msg = ExecuteMsg::Burn {
             amount: Uint128::new(burn_amount),
@@ -4101,7 +4072,7 @@ mod tests {
             handle_result.err().unwrap()
         );
 
-        let new_supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
+        let new_supply = ConfigStore::load_total_supply(&deps.storage).unwrap();
         assert_eq!(new_supply, supply - burn_amount);
     }
 
@@ -4150,7 +4121,7 @@ mod tests {
         let error = extract_error_msg(handle_result);
         assert!(error.contains("Mint functionality is not enabled for this token"));
 
-        let supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
+        let supply = ConfigStore::load_total_supply(&deps.storage).unwrap();
         let mint_amount: u128 = 100;
         let handle_msg = ExecuteMsg::Mint {
             recipient: "lebron".to_string(),
@@ -4170,7 +4141,7 @@ mod tests {
             handle_result.err().unwrap()
         );
 
-        let new_supply = TOTAL_SUPPLY.load(&deps.storage).unwrap();
+        let new_supply = ConfigStore::load_total_supply(&deps.storage).unwrap();
         assert_eq!(new_supply, supply + mint_amount);
     }
 
@@ -4877,14 +4848,14 @@ mod tests {
                 redeem_enabled,
                 mint_enabled,
                 burn_enabled,
-                supported_denoms,
+                // supported_denoms,
             } => {
                 assert_eq!(public_total_supply, true);
                 assert_eq!(deposit_enabled, false);
                 assert_eq!(redeem_enabled, false);
                 assert_eq!(mint_enabled, true);
                 assert_eq!(burn_enabled, false);
-                assert_eq!(supported_denoms.len(), 0);
+                // assert_eq!(supported_denoms.len(), 0);
             }
             _ => panic!("unexpected"),
         }

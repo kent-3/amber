@@ -150,8 +150,8 @@ Major update! Trying to implement a version where no data migrates. Reuse origin
 
 ```
 JSON='{ "name": "Amber", "admin": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "symbol": "AMBER", "decimals": 6, "initial_balances": [ { "address": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "amount": "8888000000" } ], "prng_seed": "YW1iZXIgcm9ja3M=", "config": { "public_total_supply": true, "enable_deposit": true, "enable_redeem": true, "enable_mint": true, "enable_burn": true } }'
-secretcli tx compute instantiate 3389 $JSON --label "amber563 with admin 5" --from pulsar --admin secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj
+secretcli tx compute instantiate 3389 $JSON --label "amber563 with admin 6" --from pulsar --admin secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj
 ```
 
-> code_id: 3692
-> contract_address: secret1amkmpulft7l4hfesv6eqzw5m6gkt9awteh4q89
+> code_id: 3714
+> contract_address: secret14g3lrc357h33swrx4hh2xfplp25h42myzg70ue

@@ -1,11 +1,10 @@
-use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, Api, CanonicalAddr, Coin, StdError, StdResult, Storage, Uint128};
+use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
 
-use crate::migration_support::append_store::{AppendStore, AppendStoreMut};
-
+use crate::migration_support::{AppendStore, AppendStoreMut};
 use crate::state::TX_COUNT;
 
 const PREFIX_TXS: &[u8] = b"transactions";

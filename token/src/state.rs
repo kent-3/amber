@@ -95,6 +95,7 @@ impl MintersStore {
         let mut config_store = prefixed(store, PREFIX_CONFIG);
         set_bin_data(&mut config_store, KEY_MINTERS, &minters_to_set)
     }
+// Namespaces
 
     pub fn add_minters(store: &mut dyn Storage, minters_to_add: Vec<Addr>) -> StdResult<()> {
         let mut loaded_minters = Self::load(store)?;
@@ -102,6 +103,64 @@ impl MintersStore {
 
         Self::save(store, loaded_minters)
     }
+// PREFIX_CONFIG
+// |-- KEY_CONSTANTS
+// |   └-- Constants
+// |-- KEY_TOTAL_SUPPLY
+// |   └-- u128
+// |-- KEY_CONTRACT_STATUS
+// |   └-- u8
+// |-- KEY_MINTERS
+// |   └-- Vec<Addr>
+// └-- KEY_TX_COUNT
+//     └-- u64
+//
+// PREFIX_BALANCES
+// |-- CanonicalAddr
+// |   └-- u128
+// |-- CanonicalAddr
+// |   └-- u128
+// └-- CanonicalAddr
+//     └-- u128
+//
+// [PREFIX_ALLOWED + canonical_spender]
+// |-- owner: Addr
+// |-- owner: Addr
+// └-- owner: Addr
+//
+// [PREFIX_ALLOWANCES + canonical_owner]
+// |-- spender_1: CanonicalAddr
+// |   └-- Allowance
+// |-- spender_2: CanonicalAddr
+// |   └-- Allowance
+// └-- spender_3: CanonicalAddr
+//     └-- Allowance
+//
+// PREFIX_VIEW_KEY
+// |-- account: CanonicalAddr
+// |   └-- sha256(key)
+// |-- account: CanonicalAddr
+// |   └-- sha256(key)
+// └-- account: CanonicalAddr
+//     └-- sha256(key)
+//
+// PREFIX_RECEIVERS
+// |-- Addr
+// |   └-- code_hash
+// |-- Addr
+// |   └-- code_hash
+// └-- Addr
+//     └-- code_hash
+//
+// [PREFIX_TXS + canonical_addr]
+// |-- StoredExtendedTx
+// |-- StoredExtendedTx
+// └-- StoredExtendedTx
+//
+// [PREFIX_TRANSFERS + canonical_addr]
+// |-- StoredLegacyTransfer
+// |-- StoredLegacyTransfer
+// └-- StoredLegacyTransfer
 
     pub fn remove_minters(store: &mut dyn Storage, minters_to_remove: Vec<Addr>) -> StdResult<()> {
         let mut loaded_minters = Self::load(store)?;

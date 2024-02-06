@@ -115,7 +115,7 @@ pub fn instantiate(
         }
     }
 
-    let _supported_denoms = match msg.supported_denoms {
+    let supported_denoms = match msg.supported_denoms {
         None => vec![],
         Some(x) => x,
     };
@@ -134,6 +134,7 @@ pub fn instantiate(
             mint_is_enabled: init_config.mint_enabled(),
             burn_is_enabled: init_config.burn_enabled(),
             contract_address: env.contract.address,
+            supported_denoms,
         },
     )?;
     ConfigStore::set_total_supply(deps.storage, &total_supply)?;
@@ -664,7 +665,7 @@ fn query_token_config(storage: &dyn Storage) -> StdResult<Binary> {
         redeem_enabled: constants.redeem_is_enabled,
         mint_enabled: constants.mint_is_enabled,
         burn_enabled: constants.burn_is_enabled,
-        // supported_denoms: constants.supported_denoms,
+        supported_denoms: constants.supported_denoms,
     })
 }
 
@@ -681,7 +682,7 @@ pub fn query_transfers(
     account: String,
     page: u32,
     page_size: u32,
-    should_filter_decoys: bool,
+    should_filter_decoys: Option<bool>,
 ) -> StdResult<Binary> {
     // Notice that if query_transfers() was called by a viewking-key call, the address of 'account'
     // has already been validated.
@@ -696,7 +697,7 @@ pub fn query_transfers(
         account,
         page,
         page_size,
-        should_filter_decoys,
+        should_filter_decoys.unwrap_or_default(),
     )?;
 
     let result = QueryAnswer::TransferHistory {
@@ -711,7 +712,7 @@ pub fn query_transactions(
     account: String,
     page: u32,
     page_size: u32,
-    should_filter_decoys: bool,
+    should_filter_decoys: Option<bool>,
 ) -> StdResult<Binary> {
     // Notice that if query_transactions() was called by a viewking-key call, the address of
     // 'account' has already been validated.
@@ -726,7 +727,7 @@ pub fn query_transactions(
         account,
         page,
         page_size,
-        should_filter_decoys,
+        should_filter_decoys.unwrap_or_default(),
     )?;
 
     let result = QueryAnswer::TransactionHistory {
@@ -790,61 +791,59 @@ fn change_admin(deps: DepsMut, info: MessageInfo, address: String) -> StdResult<
 }
 
 fn add_supported_denoms(
-    _deps: DepsMut,
-    _info: MessageInfo,
-    _denoms: Vec<String>,
+    deps: DepsMut,
+    info: MessageInfo,
+    denoms: Vec<String>,
 ) -> StdResult<Response> {
-    unimplemented!()
-    // let mut config = ConfigStore::load_constants(deps.storage)?;
-    //
-    // check_if_admin(&config.admin, &info.sender)?;
+    let mut config = ConfigStore::load_constants(deps.storage)?;
+
+    check_if_admin(&config.admin, &info.sender)?;
     // if !config.can_modify_denoms {
     //     return Err(StdError::generic_err(
     //         "Cannot modify denoms for this contract",
     //     ));
     // }
-    //
-    // for denom in denoms.iter() {
-    //     if !config.supported_denoms.contains(denom) {
-    //         config.supported_denoms.push(denom.clone());
-    //     }
-    // }
-    //
-    // ConfigStore::set_constants(deps.storage, &config)?;
-    //
-    // Ok(
-    //     Response::new().set_data(to_binary(&ExecuteAnswer::AddSupportedDenoms {
-    //         status: Success,
-    //     })?),
-    // )
+
+    for denom in denoms.iter() {
+        if !config.supported_denoms.contains(denom) {
+            config.supported_denoms.push(denom.clone());
+        }
+    }
+
+    ConfigStore::set_constants(deps.storage, &config)?;
+
+    Ok(
+        Response::new().set_data(to_binary(&ExecuteAnswer::AddSupportedDenoms {
+            status: Success,
+        })?),
+    )
 }
 
 fn remove_supported_denoms(
-    _deps: DepsMut,
-    _info: MessageInfo,
-    _denoms: Vec<String>,
+    deps: DepsMut,
+    info: MessageInfo,
+    denoms: Vec<String>,
 ) -> StdResult<Response> {
-    unimplemented!()
-    // let mut config = ConfigStore::load_constants(deps.storage)?;
-    //
-    // check_if_admin(&config.admin, &info.sender)?;
+    let mut config = ConfigStore::load_constants(deps.storage)?;
+
+    check_if_admin(&config.admin, &info.sender)?;
     // if !config.can_modify_denoms {
     //     return Err(StdError::generic_err(
     //         "Cannot modify denoms for this contract",
     //     ));
     // }
-    //
-    // for denom in denoms.iter() {
-    //     config.supported_denoms.retain(|x| x != denom);
-    // }
-    //
-    // ConfigStore::set_constants(deps.storage, &config)?;
-    //
-    // Ok(
-    //     Response::new().set_data(to_binary(&ExecuteAnswer::RemoveSupportedDenoms {
-    //         status: Success,
-    //     })?),
-    // )
+
+    for denom in denoms.iter() {
+        config.supported_denoms.retain(|x| x != denom);
+    }
+
+    ConfigStore::set_constants(deps.storage, &config)?;
+
+    Ok(
+        Response::new().set_data(to_binary(&ExecuteAnswer::RemoveSupportedDenoms {
+            status: Success,
+        })?),
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1514,7 +1513,7 @@ fn try_register_receive(
     info: MessageInfo,
     code_hash: String,
 ) -> StdResult<Response> {
-    ReceiverHashStore::save(deps.storage, &info.sender, code_hash)?;
+    ReceiverHashStore::save(deps.storage, &info.sender, code_hash);
 
     let data = to_binary(&ExecuteAnswer::RegisterReceive { status: Success })?;
     Ok(Response::new()
@@ -4841,14 +4840,14 @@ mod tests {
                 redeem_enabled,
                 mint_enabled,
                 burn_enabled,
-                // supported_denoms,
+                supported_denoms,
             } => {
                 assert_eq!(public_total_supply, true);
                 assert_eq!(deposit_enabled, false);
                 assert_eq!(redeem_enabled, false);
                 assert_eq!(mint_enabled, true);
                 assert_eq!(burn_enabled, false);
-                // assert_eq!(supported_denoms.len(), 0);
+                assert_eq!(supported_denoms.len(), 0);
             }
             _ => panic!("unexpected"),
         }
@@ -5548,7 +5547,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 0,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         // let a: QueryAnswer = from_binary(&query_result.unwrap()).unwrap();
@@ -5564,7 +5563,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5578,7 +5577,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 2,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5592,7 +5591,7 @@ mod tests {
             key: "key".to_string(),
             page: Some(1),
             page_size: 2,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5700,7 +5699,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5714,7 +5713,7 @@ mod tests {
             key: "alice_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5728,7 +5727,7 @@ mod tests {
             key: "alice_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5742,7 +5741,7 @@ mod tests {
             key: "banana_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5756,7 +5755,7 @@ mod tests {
             key: "lior_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5958,7 +5957,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5972,7 +5971,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -6311,7 +6310,7 @@ mod tests {
             key: "lior_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transactions = match from_binary(&query_result.unwrap()).unwrap() {
@@ -6326,7 +6325,7 @@ mod tests {
             key: "alice_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transactions = match from_binary(&query_result.unwrap()).unwrap() {
@@ -6341,7 +6340,7 @@ mod tests {
             key: "alice_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transactions = match from_binary(&query_result.unwrap()).unwrap() {
@@ -6356,7 +6355,7 @@ mod tests {
             key: "jhon_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transactions = match from_binary(&query_result.unwrap()).unwrap() {
@@ -6371,7 +6370,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transactions = match from_binary(&query_result.unwrap()).unwrap() {

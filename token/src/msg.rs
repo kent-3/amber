@@ -480,16 +480,16 @@ pub enum QueryMsg {
         key: String,
         page: Option<u32>,
         page_size: u32,
-        // TODO - this added field breaks compatibility. Try to make it optional
-        should_filter_decoys: bool,
+        // I made this optional
+        should_filter_decoys: Option<bool>,
     },
     TransactionHistory {
         address: String,
         key: String,
         page: Option<u32>,
         page_size: u32,
-        // TODO - this added field breaks compatibility. Try to make it optional
-        should_filter_decoys: bool,
+        // I made this optional
+        should_filter_decoys: Option<bool>,
     },
     Minters {},
     WithPermit {
@@ -559,12 +559,12 @@ pub enum QueryWithPermit {
     TransferHistory {
         page: Option<u32>,
         page_size: u32,
-        should_filter_decoys: bool,
+        should_filter_decoys: Option<bool>,
     },
     TransactionHistory {
         page: Option<u32>,
         page_size: u32,
-        should_filter_decoys: bool,
+        should_filter_decoys: Option<bool>,
     },
 }
 
@@ -583,7 +583,7 @@ pub enum QueryAnswer {
         redeem_enabled: bool,
         mint_enabled: bool,
         burn_enabled: bool,
-        // supported_denoms: Vec<String>,
+        supported_denoms: Vec<String>,
     },
     ContractStatus {
         status: ContractStatusLevel,

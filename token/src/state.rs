@@ -7,17 +7,14 @@ use cosmwasm_std::{Addr, CanonicalAddr, StdError, StdResult, Storage};
 use cosmwasm_storage::{prefixed, prefixed_read, PrefixedStorage, ReadonlyPrefixedStorage};
 
 use secret_toolkit::crypto::SHA256_HASH_SIZE;
-use secret_toolkit::serialization::Json;
-use secret_toolkit::storage::{Item, Keymap, Keyset};
+use secret_toolkit::storage::{Keymap, Keyset};
 
 use crate::msg::{status_level_to_u8, u8_to_status_level, ContractStatusLevel};
 
 pub const KEY_CONSTANTS: &[u8] = b"constants";
-
-pub const KEY_CONFIG: &[u8] = b"config";
 pub const KEY_TOTAL_SUPPLY: &[u8] = b"total_supply";
 pub const KEY_CONTRACT_STATUS: &[u8] = b"contract_status";
-pub const KEY_PRNG: &[u8] = b"prng";
+// pub const KEY_PRNG: &[u8] = b"prng";
 pub const KEY_MINTERS: &[u8] = b"minters";
 pub const KEY_TX_COUNT: &[u8] = b"tx-count";
 
@@ -28,81 +25,8 @@ pub const PREFIX_ALLOWED: &[u8] = b"allowed";
 pub const PREFIX_VIEW_KEY: &[u8] = b"viewingkey";
 pub const PREFIX_RECEIVERS: &[u8] = b"receivers";
 
-// Config
-
-// #[derive(Serialize, Debug, Deserialize, Clone, JsonSchema)]
-// #[cfg_attr(test, derive(Eq, PartialEq))]
-// pub struct Config {
-//     pub name: String,
-//     pub admin: Addr,
-//     pub symbol: String,
-//     pub decimals: u8,
-//     // privacy configuration
-//     pub total_supply_is_public: bool,
-//     // is deposit enabled
-//     pub deposit_is_enabled: bool,
-//     // is redeem enabled
-//     pub redeem_is_enabled: bool,
-//     // is mint enabled
-//     pub mint_is_enabled: bool,
-//     // is burn enabled
-//     pub burn_is_enabled: bool,
-//     // the address of this contract, used to validate query permits
-//     pub contract_address: Addr,
-//     // coin denoms that are supported for deposit/redeem
-//     pub supported_denoms: Vec<String>,
-//     // can admin add or remove supported denoms
-//     pub can_modify_denoms: bool,
-// }
-
-// pub static CONFIG: Item<Config> = Item::new(KEY_CONFIG);
-
-pub static TOTAL_SUPPLY: Item<u128> = Item::new(KEY_TOTAL_SUPPLY);
-
-// TODO - when converting to old style state, serialize at JSON instead of [u8]
-pub static CONTRACT_STATUS: Item<ContractStatusLevel, Json> = Item::new(KEY_CONTRACT_STATUS);
-
-pub static PRNG: Item<[u8; SHA256_HASH_SIZE]> = Item::new(KEY_PRNG);
-
-pub static TX_COUNT: Item<u64> = Item::new(KEY_TX_COUNT);
-
-pub struct PrngStore {}
-impl PrngStore {
-    pub fn load(store: &dyn Storage) -> StdResult<[u8; SHA256_HASH_SIZE]> {
-        let loaded_constants = ConfigStore::load_constants(store)?;
-
-        // This should always work because the seed is sha256 hashed
-        loaded_constants
-            .prng_seed
-            .try_into()
-            .map_err(|_err| StdError::generic_err("stored prng_seed was not 32 bytes"))
-    }
-
-    pub fn save(store: &mut dyn Storage, prng_seed: [u8; SHA256_HASH_SIZE]) -> StdResult<()> {
-        let mut config_store = prefixed(store, PREFIX_CONFIG);
-        set_bin_data(&mut config_store, KEY_PRNG, &prng_seed)
-    }
-}
-
-pub struct MintersStore {}
-impl MintersStore {
-    pub fn load(store: &dyn Storage) -> StdResult<Vec<Addr>> {
-        let config_store = prefixed_read(store, PREFIX_CONFIG);
-        get_bin_data(config_store, KEY_MINTERS)
-    }
-
-    pub fn save(store: &mut dyn Storage, minters_to_set: Vec<Addr>) -> StdResult<()> {
-        let mut config_store = prefixed(store, PREFIX_CONFIG);
-        set_bin_data(&mut config_store, KEY_MINTERS, &minters_to_set)
-    }
 // Namespaces
 
-    pub fn add_minters(store: &mut dyn Storage, minters_to_add: Vec<Addr>) -> StdResult<()> {
-        let mut loaded_minters = Self::load(store)?;
-        loaded_minters.extend(minters_to_add);
-
-        Self::save(store, loaded_minters)
-    }
 // PREFIX_CONFIG
 // |-- KEY_CONSTANTS
 // |   └-- Constants
@@ -162,16 +86,7 @@ impl MintersStore {
 // |-- StoredLegacyTransfer
 // └-- StoredLegacyTransfer
 
-    pub fn remove_minters(store: &mut dyn Storage, minters_to_remove: Vec<Addr>) -> StdResult<()> {
-        let mut loaded_minters = Self::load(store)?;
-
-        for minter in minters_to_remove {
-            loaded_minters.retain(|x| x != &minter);
-        }
-
-        Self::save(store, loaded_minters)
-    }
-}
+// Config
 
 #[derive(Serialize, Debug, Deserialize, Clone, JsonSchema)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
@@ -193,6 +108,15 @@ pub struct Constants {
     pub burn_is_enabled: bool,
     // the address of this contract, used to validate query permits
     pub contract_address: Addr,
+    // coin denoms that are supported for deposit/redeem
+    pub supported_denoms: Vec<String>,
+}
+
+impl Constants {
+    fn update_prng_seed(&mut self, prng_seed: [u8; 32]) -> &mut Self {
+        self.prng_seed = prng_seed.to_vec();
+        self
+    }
 }
 
 pub struct ConfigStore {}
@@ -258,6 +182,8 @@ impl ConfigStore {
     }
 }
 
+// old-style functions
+
 fn ser_bin_data<T: Serialize>(obj: &T) -> StdResult<Vec<u8>> {
     bincode2::serialize(&obj).map_err(|e| StdError::serialize_err(type_name::<T>(), e))
 }
@@ -286,6 +212,62 @@ fn get_bin_data<T: DeserializeOwned>(storage: ReadonlyPrefixedStorage, key: &[u8
     }
 }
 
+// Prng
+//
+// Has a separate interface now, but it still lives inside the Constants struct.
+// It is stored as a Vec<u8>, but the functions that use it now expect a [u8; 32].
+
+pub struct PrngStore {}
+impl PrngStore {
+    pub fn load(store: &dyn Storage) -> StdResult<[u8; SHA256_HASH_SIZE]> {
+        // This should always work because the seed is sha256 hashed
+        ConfigStore::load_constants(store)?
+            .prng_seed
+            .try_into()
+            .map_err(|_err| StdError::generic_err("stored prng_seed was not 32 bytes"))
+    }
+
+    pub fn save(store: &mut dyn Storage, prng_seed: [u8; SHA256_HASH_SIZE]) -> StdResult<()> {
+        let mut constants = ConfigStore::load_constants(store)?;
+        constants.update_prng_seed(prng_seed);
+        ConfigStore::set_constants(store, &constants)
+    }
+}
+
+// Minters
+
+pub struct MintersStore {}
+impl MintersStore {
+    pub fn load(store: &dyn Storage) -> StdResult<Vec<Addr>> {
+        let config_store = prefixed_read(store, PREFIX_CONFIG);
+        get_bin_data(config_store, KEY_MINTERS)
+    }
+
+    pub fn save(store: &mut dyn Storage, minters_to_set: Vec<Addr>) -> StdResult<()> {
+        let mut config_store = prefixed(store, PREFIX_CONFIG);
+        set_bin_data(&mut config_store, KEY_MINTERS, &minters_to_set)
+    }
+
+    pub fn add_minters(store: &mut dyn Storage, minters_to_add: Vec<Addr>) -> StdResult<()> {
+        let mut loaded_minters = Self::load(store)?;
+        loaded_minters.extend(minters_to_add);
+
+        Self::save(store, loaded_minters)
+    }
+
+    pub fn remove_minters(store: &mut dyn Storage, minters_to_remove: Vec<Addr>) -> StdResult<()> {
+        let mut loaded_minters = Self::load(store)?;
+
+        for minter in minters_to_remove {
+            loaded_minters.retain(|x| x != &minter);
+        }
+
+        Self::save(store, loaded_minters)
+    }
+}
+
+// Balances
+
 // To avoid balance guessing attacks based on balance overflow we need to perform safe addition and don't expose overflows to the caller.
 // Assuming that max of u128 is probably an unreachable balance, we want the addition to be bounded the max of u128
 // Currently the logic here is very straight forward yet the existence of the function is mendatory for future changes if needed.
@@ -299,7 +281,6 @@ pub fn safe_add(balance: &mut u128, amount: u128) -> u128 {
     *balance - prev_balance
 }
 
-// pub static BALANCES: Item<u128> = Item::new(PREFIX_BALANCES);
 pub struct BalancesStore {}
 impl BalancesStore {
     fn save(store: &mut dyn Storage, account: &CanonicalAddr, amount: u128) {
@@ -400,6 +381,8 @@ impl BalancesStore {
 }
 
 // Allowances
+//
+// No changes to this section. We probably don't have any existing allowances anyway.
 
 #[derive(Serialize, Debug, Deserialize, Clone, PartialEq, Eq, Default, JsonSchema)]
 pub struct Allowance {
@@ -415,9 +398,6 @@ impl Allowance {
         }
     }
 }
-
-// TODO - decide if it's worth changing this, since we probably don't have any existing allowances
-// we could just change the Addr to CanonicalAddr to be consistent?
 
 pub static ALLOWANCES: Keymap<Addr, Allowance> = Keymap::new(PREFIX_ALLOWANCES);
 pub static ALLOWED: Keyset<Addr> = Keyset::new(PREFIX_ALLOWED);
@@ -509,10 +489,9 @@ impl ReceiverHashStore {
     }
 
     // TODO - StdResult not necessary as this can't fail, but leaving it here to not break existing stuff
-    pub fn save(store: &mut dyn Storage, account: &Addr, code_hash: String) -> StdResult<()> {
+    pub fn save(store: &mut dyn Storage, account: &Addr, code_hash: String) -> () {
         let mut store = PrefixedStorage::new(store, PREFIX_RECEIVERS);
-        store.set(account.as_str().as_bytes(), code_hash.as_bytes());
-        Ok(())
+        store.set(account.as_str().as_bytes(), code_hash.as_bytes())
     }
 }
 

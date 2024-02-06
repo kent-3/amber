@@ -5,7 +5,7 @@ use cosmwasm_std::{Addr, Api, CanonicalAddr, Coin, StdError, StdResult, Storage,
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
 
 use crate::migration_support::{AppendStore, AppendStoreMut};
-use crate::state::TX_COUNT;
+use crate::state::ConfigStore;
 
 const PREFIX_TXS: &[u8] = b"transactions";
 const PREFIX_TRANSFERS: &[u8] = b"transfers";
@@ -422,8 +422,8 @@ impl StoredExtendedTx {
 // Storage functions:
 
 fn increment_tx_count(store: &mut dyn Storage) -> StdResult<u64> {
-    let id = TX_COUNT.load(store).unwrap_or_default() + 1;
-    TX_COUNT.save(store, &id)?;
+    let id = ConfigStore::load_tx_count(store) + 1;
+    ConfigStore::set_tx_count(store, &id)?;
     Ok(id)
 }
 

@@ -15,7 +15,7 @@ pub const KEY_CONSTANTS: &[u8] = b"constants";
 pub const KEY_TOTAL_SUPPLY: &[u8] = b"total_supply";
 pub const KEY_CONTRACT_STATUS: &[u8] = b"contract_status";
 pub const KEY_MINTERS: &[u8] = b"minters";
-pub const KEY_TX_COUNT: &[u8] = b"tx-count";
+pub const KEY_TX_COUNT: &[u8] = b"tx-count"; // dash bothers me, but that's how it was
 
 pub const PREFIX_CONFIG: &[u8] = b"config";
 pub const PREFIX_BALANCES: &[u8] = b"balances";
@@ -23,6 +23,64 @@ pub const PREFIX_ALLOWANCES: &[u8] = b"allowances";
 pub const PREFIX_ALLOWED: &[u8] = b"allowed";
 pub const PREFIX_VIEW_KEY: &[u8] = b"viewingkey";
 pub const PREFIX_RECEIVERS: &[u8] = b"receivers";
+
+pub static OAC: Keyset<CanonicalAddr> = Keyset::new(b"oac");
+pub static TELEGRAM: Keymap<CanonicalAddr, String> = Keymap::new(b"telegram");
+
+pub struct OacStore {}
+impl OacStore {
+    /// Returns the current known number of users with 1+ AMBER.
+    pub fn get_member_count(storage: &dyn Storage) -> u32 {
+        OAC.get_len(storage).unwrap_or_default()
+    }
+
+    /// Add or Remove the account key from the OAC Keyset.
+    pub fn set_status(
+        store: &mut dyn Storage,
+        account: &CanonicalAddr,
+        previous_balance: u128,
+        balance: u128,
+    ) -> Result<(), StdError> {
+        Ok(match (previous_balance >= 1, balance >= 1) {
+            (false, false) | (true, false) => {
+                OAC.insert(store, account)?;
+            }
+            (true, true) | (false, true) => {
+                OAC.remove(store, account)?;
+            }
+        })
+    }
+
+    // Allow anyone to add a handle, regardless of balance.
+    pub fn save_telegram_handle(
+        storage: &mut dyn Storage,
+        account: &CanonicalAddr,
+        handle: &String,
+    ) -> StdResult<()> {
+        TELEGRAM.insert(storage, account, handle)
+    }
+
+    // Allow user to remove their handle.
+    pub fn remove_telegram_handle(
+        storage: &mut dyn Storage,
+        account: &CanonicalAddr,
+    ) -> StdResult<()> {
+        TELEGRAM.remove(storage, account)
+    }
+
+    /// Returns only Telegram handles that belong to OAC.
+    pub fn get_oac_telegram_handles(storage: &dyn Storage) -> StdResult<Vec<String>> {
+        let members = OAC
+            .iter(storage)?
+            .filter_map(|entry_result| match entry_result {
+                Ok(entry) => TELEGRAM.get(storage, &entry),
+                Err(_) => None, // Ignore errors and proceed with the next entry
+            })
+            .collect();
+
+        Ok(members)
+    }
+}
 
 // Namespaces
 
@@ -312,6 +370,8 @@ impl BalancesStore {
         match decoys {
             None => {
                 let mut balance = Self::load(store, account);
+                let previous_balance = balance.clone();
+
                 balance = match should_add {
                     true => {
                         safe_add(&mut balance, amount_to_be_updated);
@@ -327,6 +387,8 @@ impl BalancesStore {
                         }
                     }
                 };
+
+                OacStore::set_status(store, account, previous_balance, balance)?;
 
                 Self::save(store, account, balance);
                 Ok(())
@@ -351,6 +413,8 @@ impl BalancesStore {
                     let mut acc_balance = Self::load(store, acc);
                     let mut new_balance = acc_balance;
 
+                    let previous_balance = acc_balance.clone();
+
                     if *acc == account && !was_account_updated {
                         was_account_updated = true;
                         new_balance = match should_add {
@@ -369,6 +433,7 @@ impl BalancesStore {
                                 }
                             }
                         };
+                        OacStore::set_status(store, account, previous_balance, new_balance)?;
                     }
                     Self::save(store, acc, new_balance);
                 }

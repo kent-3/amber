@@ -1,0 +1,1 @@
+da990e2b5f37748196b7c1b1b0e4bbdcd7c9fc4b72d7f8c6ecf45225b70f463e *./contract.wasm.gz

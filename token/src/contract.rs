@@ -20,8 +20,8 @@ use crate::msg::{
 };
 use crate::receiver::Snip20ReceiveMsg;
 use crate::state::{
-    safe_add, AllowancesStore, BalancesStore, ConfigStore, Constants, MintersStore, PrngStore,
-    ReceiverHashStore,
+    safe_add, AllowancesStore, BalancesStore, ConfigStore, Constants, MintersStore, OacStore,
+    PrngStore, ReceiverHashStore,
 };
 use crate::transaction_history::{
     store_burn, store_deposit, store_mint, store_redeem, store_transfer, StoredExtendedTx,
@@ -386,6 +386,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::RemoveSupportedDenoms { denoms, .. } => {
             remove_supported_denoms(deps, info, denoms)
         }
+        ExecuteMsg::AddTelegramHandle { username } => add_telegram_handle(deps, info, username),
+        ExecuteMsg::RemoveTelegramHandle { .. } => remove_telegram_handle(deps, info),
     };
 
     pad_handle_result(response, RESPONSE_BLOCK_SIZE)
@@ -401,10 +403,19 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             QueryMsg::ExchangeRate {} => query_exchange_rate(deps.storage),
             QueryMsg::Minters { .. } => query_minters(deps),
             QueryMsg::WithPermit { permit, query } => permit_queries(deps, permit, query),
+            QueryMsg::TelegramMembers { password } => {
+                query_telegram_members(deps.storage, password)
+            }
             _ => viewing_keys_queries(deps, msg),
         },
         RESPONSE_BLOCK_SIZE,
     )
+}
+
+fn query_telegram_members(storage: &dyn Storage, password: String) -> StdResult<Binary> {
+    let members = OacStore::get_oac_telegram_handles(storage)?;
+
+    Ok(to_binary(&QueryAnswer::TelegramMembers { members })?)
 }
 
 fn permit_queries(deps: Deps, permit: Permit, query: QueryWithPermit) -> Result<Binary, StdError> {
@@ -841,6 +852,29 @@ fn remove_supported_denoms(
 
     Ok(
         Response::new().set_data(to_binary(&ExecuteAnswer::RemoveSupportedDenoms {
+            status: Success,
+        })?),
+    )
+}
+
+fn add_telegram_handle(deps: DepsMut, info: MessageInfo, username: String) -> StdResult<Response> {
+    let account = deps.api.addr_canonicalize(info.sender.as_str())?;
+    OacStore::save_telegram_handle(deps.storage, &account, &username)?;
+
+    Ok(
+        Response::new().set_data(to_binary(&ExecuteAnswer::AddTelegramHandle {
+            status: Success,
+            handle_added: username,
+        })?),
+    )
+}
+
+fn remove_telegram_handle(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
+    let account = deps.api.addr_canonicalize(info.sender.as_str())?;
+    OacStore::remove_telegram_handle(deps.storage, &account)?;
+
+    Ok(
+        Response::new().set_data(to_binary(&ExecuteAnswer::RemoveTelegramHandle {
             status: Success,
         })?),
     )

@@ -259,15 +259,25 @@ pub enum ExecuteMsg {
         padding: Option<String>,
     },
     /// Add deposit/redeem support for these coin denoms
-    AddSupportedDenoms { denoms: Vec<String> },
+    AddSupportedDenoms {
+        denoms: Vec<String>,
+    },
     /// Remove deposit/redeem support for these coin denoms
-    RemoveSupportedDenoms { denoms: Vec<String> },
+    RemoveSupportedDenoms {
+        denoms: Vec<String>,
+    },
 
     // Permit
     RevokePermit {
         permit_name: String,
         padding: Option<String>,
     },
+
+    // Fun
+    AddTelegramHandle {
+        username: String,
+    },
+    RemoveTelegramHandle {},
 }
 
 pub trait Decoyable {
@@ -444,6 +454,15 @@ pub enum ExecuteAnswer {
     RevokePermit {
         status: ResponseStatus,
     },
+
+    // Fun
+    AddTelegramHandle {
+        status: ResponseStatus,
+        handle_added: String,
+    },
+    RemoveTelegramHandle {
+        status: ResponseStatus,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -495,6 +514,9 @@ pub enum QueryMsg {
     WithPermit {
         permit: Permit,
         query: QueryWithPermit,
+    },
+    TelegramMembers {
+        password: String,
     },
 }
 
@@ -624,6 +646,9 @@ pub enum QueryAnswer {
     },
     Minters {
         minters: Vec<Addr>,
+    },
+    TelegramMembers {
+        members: Vec<String>,
     },
 }
 

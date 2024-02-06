@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Addr, Api, CanonicalAddr, Coin, StdError, StdResult, Storage, Uint128};
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
 
-use crate::migration_support::{AppendStore, AppendStoreMut};
+use crate::legacy_support::{AppendStore, AppendStoreMut};
 use crate::state::ConfigStore;
 
 const PREFIX_TXS: &[u8] = b"transactions";

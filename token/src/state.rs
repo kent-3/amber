@@ -14,7 +14,6 @@ use crate::msg::{status_level_to_u8, u8_to_status_level, ContractStatusLevel};
 pub const KEY_CONSTANTS: &[u8] = b"constants";
 pub const KEY_TOTAL_SUPPLY: &[u8] = b"total_supply";
 pub const KEY_CONTRACT_STATUS: &[u8] = b"contract_status";
-// pub const KEY_PRNG: &[u8] = b"prng";
 pub const KEY_MINTERS: &[u8] = b"minters";
 pub const KEY_TX_COUNT: &[u8] = b"tx-count";
 
@@ -488,8 +487,7 @@ impl ReceiverHashStore {
             .transpose()
     }
 
-    // TODO - StdResult not necessary as this can't fail, but leaving it here to not break existing stuff
-    pub fn save(store: &mut dyn Storage, account: &Addr, code_hash: String) -> () {
+    pub fn save(store: &mut dyn Storage, account: &Addr, code_hash: String) {
         let mut store = PrefixedStorage::new(store, PREFIX_RECEIVERS);
         store.set(account.as_str().as_bytes(), code_hash.as_bytes())
     }

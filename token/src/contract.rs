@@ -12,7 +12,7 @@ use secret_toolkit::permit::{Permit, RevokedPermits, TokenPermissions};
 use secret_toolkit::utils::{pad_handle_result, pad_query_result};
 
 use crate::batch;
-use crate::migration_support::{ViewingKey, ViewingKeyStore};
+use crate::legacy_support::{ViewingKey, ViewingKeyStore};
 use crate::msg::{
     AllowanceGivenResult, AllowanceReceivedResult, ContractStatusLevel, Decoyable, ExecuteAnswer,
     ExecuteMsg, InstantiateMsg, MigrateAnswer, MigrateMsg, QueryAnswer, QueryMsg, QueryWithPermit,

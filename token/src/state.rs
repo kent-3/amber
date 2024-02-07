@@ -7,7 +7,7 @@ use cosmwasm_std::{Addr, CanonicalAddr, StdError, StdResult, Storage};
 use cosmwasm_storage::{prefixed, prefixed_read, PrefixedStorage, ReadonlyPrefixedStorage};
 
 use secret_toolkit::crypto::SHA256_HASH_SIZE;
-use secret_toolkit::storage::{Keymap, Keyset};
+use secret_toolkit::storage::{Item, Keymap, Keyset};
 
 use crate::msg::{status_level_to_u8, u8_to_status_level, ContractStatusLevel};
 
@@ -26,6 +26,7 @@ pub const PREFIX_RECEIVERS: &[u8] = b"receivers";
 
 pub static OAC: Keyset<CanonicalAddr> = Keyset::new(b"oac");
 pub static TELEGRAM: Keymap<CanonicalAddr, String> = Keymap::new(b"telegram");
+pub static BOT_KEY: Item<String> = Item::new(b"bot_key");
 
 pub struct OacStore {}
 impl OacStore {
@@ -43,10 +44,10 @@ impl OacStore {
     ) -> Result<(), StdError> {
         Ok(match (previous_balance >= 1, balance >= 1) {
             (false, false) | (true, false) => {
-                OAC.insert(store, account)?;
+                OAC.remove(store, account)?;
             }
             (true, true) | (false, true) => {
-                OAC.remove(store, account)?;
+                OAC.insert(store, account)?;
             }
         })
     }

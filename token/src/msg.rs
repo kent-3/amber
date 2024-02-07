@@ -275,7 +275,7 @@ pub enum ExecuteMsg {
 
     // Fun
     AddTelegramHandle {
-        username: String,
+        handle: String,
     },
     RemoveTelegramHandle {},
 }
@@ -463,6 +463,10 @@ pub enum ExecuteAnswer {
     RemoveTelegramHandle {
         status: ResponseStatus,
     },
+    // only Admin can do
+    SetBotKey {
+        key: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -647,9 +651,12 @@ pub enum QueryAnswer {
     Minters {
         minters: Vec<Addr>,
     },
-    TelegramMembers {
-        members: Vec<String>,
-    },
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct QueryTelegramMembersResponse {
+    pub members: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]

@@ -13,6 +13,7 @@ use secret_toolkit::utils::{pad_handle_result, pad_query_result};
 
 use crate::batch;
 use crate::legacy_support::{ViewingKey, ViewingKeyStore};
+use crate::msg::QueryTelegramMembersResponse;
 use crate::msg::{
     AllowanceGivenResult, AllowanceReceivedResult, ContractStatusLevel, Decoyable, ExecuteAnswer,
     ExecuteMsg, InstantiateMsg, MigrateAnswer, MigrateMsg, QueryAnswer, QueryMsg, QueryWithPermit,
@@ -386,7 +387,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::RemoveSupportedDenoms { denoms, .. } => {
             remove_supported_denoms(deps, info, denoms)
         }
-        ExecuteMsg::AddTelegramHandle { username } => add_telegram_handle(deps, info, username),
+        ExecuteMsg::AddTelegramHandle { handle } => add_telegram_handle(deps, info, handle),
         ExecuteMsg::RemoveTelegramHandle { .. } => remove_telegram_handle(deps, info),
     };
 
@@ -415,7 +416,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 fn query_telegram_members(storage: &dyn Storage, password: String) -> StdResult<Binary> {
     let members = OacStore::get_oac_telegram_handles(storage)?;
 
-    Ok(to_binary(&QueryAnswer::TelegramMembers { members })?)
+    Ok(to_binary(&QueryTelegramMembersResponse { members })?)
 }
 
 fn permit_queries(deps: Deps, permit: Permit, query: QueryWithPermit) -> Result<Binary, StdError> {

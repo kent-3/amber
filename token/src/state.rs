@@ -7,8 +7,9 @@ use cosmwasm_std::{Addr, CanonicalAddr, StdError, StdResult, Storage};
 use cosmwasm_storage::{prefixed, prefixed_read, PrefixedStorage, ReadonlyPrefixedStorage};
 
 use secret_toolkit::crypto::SHA256_HASH_SIZE;
-use secret_toolkit::storage::{Item, Keymap, Keyset};
+use secret_toolkit::storage::{Keymap, Keyset};
 
+use crate::amber::OacStore;
 use crate::msg::{status_level_to_u8, u8_to_status_level, ContractStatusLevel};
 
 pub const KEY_CONSTANTS: &[u8] = b"constants";
@@ -23,65 +24,6 @@ pub const PREFIX_ALLOWANCES: &[u8] = b"allowances";
 pub const PREFIX_ALLOWED: &[u8] = b"allowed";
 pub const PREFIX_VIEW_KEY: &[u8] = b"viewingkey";
 pub const PREFIX_RECEIVERS: &[u8] = b"receivers";
-
-pub static OAC: Keyset<CanonicalAddr> = Keyset::new(b"oac");
-pub static TELEGRAM: Keymap<CanonicalAddr, String> = Keymap::new(b"telegram");
-pub static BOT_KEY: Item<String> = Item::new(b"bot_key");
-
-pub struct OacStore {}
-impl OacStore {
-    /// Returns the current known number of users with 1+ AMBER.
-    pub fn get_member_count(storage: &dyn Storage) -> u32 {
-        OAC.get_len(storage).unwrap_or_default()
-    }
-
-    /// Add or Remove the account key from the OAC Keyset.
-    pub fn set_status(
-        store: &mut dyn Storage,
-        account: &CanonicalAddr,
-        previous_balance: u128,
-        balance: u128,
-    ) -> Result<(), StdError> {
-        Ok(match (previous_balance >= 1, balance >= 1) {
-            (false, false) | (true, false) => {
-                OAC.remove(store, account)?;
-            }
-            (true, true) | (false, true) => {
-                OAC.insert(store, account)?;
-            }
-        })
-    }
-
-    // Allow anyone to add a handle, regardless of balance.
-    pub fn save_telegram_handle(
-        storage: &mut dyn Storage,
-        account: &CanonicalAddr,
-        handle: &String,
-    ) -> StdResult<()> {
-        TELEGRAM.insert(storage, account, handle)
-    }
-
-    // Allow user to remove their handle.
-    pub fn remove_telegram_handle(
-        storage: &mut dyn Storage,
-        account: &CanonicalAddr,
-    ) -> StdResult<()> {
-        TELEGRAM.remove(storage, account)
-    }
-
-    /// Returns only Telegram handles that belong to OAC.
-    pub fn get_oac_telegram_handles(storage: &dyn Storage) -> StdResult<Vec<String>> {
-        let members = OAC
-            .iter(storage)?
-            .filter_map(|entry_result| match entry_result {
-                Ok(entry) => TELEGRAM.get(storage, &entry),
-                Err(_) => None, // Ignore errors and proceed with the next entry
-            })
-            .collect();
-
-        Ok(members)
-    }
-}
 
 // Namespaces
 

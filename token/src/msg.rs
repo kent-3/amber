@@ -520,7 +520,7 @@ pub enum QueryMsg {
         query: QueryWithPermit,
     },
     TelegramMembers {
-        password: String,
+        key: String,
     },
 }
 

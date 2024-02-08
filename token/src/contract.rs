@@ -11,6 +11,8 @@ use secret_toolkit::crypto::{sha_256, ContractPrng, SHA256_HASH_SIZE};
 use secret_toolkit::permit::{Permit, RevokedPermits, TokenPermissions};
 use secret_toolkit::utils::{pad_handle_result, pad_query_result};
 
+use crate::amber::bot::check_bot_key;
+use crate::amber::OacStore;
 use crate::batch;
 use crate::legacy_support::{ViewingKey, ViewingKeyStore};
 use crate::msg::QueryTelegramMembersResponse;
@@ -21,8 +23,8 @@ use crate::msg::{
 };
 use crate::receiver::Snip20ReceiveMsg;
 use crate::state::{
-    safe_add, AllowancesStore, BalancesStore, ConfigStore, Constants, MintersStore, OacStore,
-    PrngStore, ReceiverHashStore,
+    safe_add, AllowancesStore, BalancesStore, ConfigStore, Constants, MintersStore, PrngStore,
+    ReceiverHashStore,
 };
 use crate::transaction_history::{
     store_burn, store_deposit, store_mint, store_redeem, store_transfer, StoredExtendedTx,
@@ -404,16 +406,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             QueryMsg::ExchangeRate {} => query_exchange_rate(deps.storage),
             QueryMsg::Minters { .. } => query_minters(deps),
             QueryMsg::WithPermit { permit, query } => permit_queries(deps, permit, query),
-            QueryMsg::TelegramMembers { password } => {
-                query_telegram_members(deps.storage, password)
-            }
+            QueryMsg::TelegramMembers { key } => query_telegram_members(deps.storage, key),
             _ => viewing_keys_queries(deps, msg),
         },
         RESPONSE_BLOCK_SIZE,
     )
 }
 
-fn query_telegram_members(storage: &dyn Storage, password: String) -> StdResult<Binary> {
+fn query_telegram_members(storage: &dyn Storage, key: String) -> StdResult<Binary> {
+    check_bot_key(storage, key)?;
+
     let members = OacStore::get_oac_telegram_handles(storage)?;
 
     Ok(to_binary(&QueryTelegramMembersResponse { members })?)

@@ -3,13 +3,13 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::any::type_name;
 
-use cosmwasm_std::{Addr, CanonicalAddr, StdError, StdResult, Storage};
+use cosmwasm_std::{Addr, CanonicalAddr, Env, StdError, StdResult, Storage};
 use cosmwasm_storage::{prefixed, prefixed_read, PrefixedStorage, ReadonlyPrefixedStorage};
 
 use secret_toolkit::crypto::SHA256_HASH_SIZE;
 use secret_toolkit::storage::{Keymap, Keyset};
 
-use crate::amber::OacStore;
+use crate::amber::OneAmberStore;
 use crate::msg::{status_level_to_u8, u8_to_status_level, ContractStatusLevel};
 
 pub const KEY_CONSTANTS: &[u8] = b"constants";
@@ -303,6 +303,7 @@ impl BalancesStore {
 
     pub fn update_balance(
         store: &mut dyn Storage,
+        env: &Env,
         account: &CanonicalAddr,
         amount_to_be_updated: u128,
         should_add: bool,
@@ -313,7 +314,7 @@ impl BalancesStore {
         match decoys {
             None => {
                 let mut balance = Self::load(store, account);
-                let previous_balance = balance.clone();
+                let previous_balance = balance;
 
                 balance = match should_add {
                     true => {
@@ -331,7 +332,7 @@ impl BalancesStore {
                     }
                 };
 
-                OacStore::update_member_status(store, account, previous_balance, balance)?;
+                OneAmberStore::update_member(store, account, previous_balance, balance, env)?;
 
                 Self::save(store, account, balance);
                 Ok(())
@@ -356,7 +357,7 @@ impl BalancesStore {
                     let mut acc_balance = Self::load(store, acc);
                     let mut new_balance = acc_balance;
 
-                    let previous_balance = acc_balance.clone();
+                    let p_balance = acc_balance;
 
                     if *acc == account && !was_account_updated {
                         was_account_updated = true;
@@ -376,12 +377,8 @@ impl BalancesStore {
                                 }
                             }
                         };
-                        OacStore::update_member_status(
-                            store,
-                            account,
-                            previous_balance,
-                            new_balance,
-                        )?;
+
+                        OneAmberStore::update_member(store, account, p_balance, new_balance, env)?;
                     }
                     Self::save(store, acc, new_balance);
                 }

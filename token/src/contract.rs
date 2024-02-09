@@ -1,5 +1,6 @@
-/// This contract implements SNIP-20 standard:
-/// https://github.com/SecretFoundation/SNIPs/blob/master/SNIP-20.md
+//! This contract implements SNIP-20 standard:
+//! https://github.com/SecretFoundation/SNIPs/blob/master/SNIP-20.md
+
 use rand::RngCore;
 
 use cosmwasm_std::{
@@ -11,15 +12,15 @@ use secret_toolkit::crypto::{sha_256, ContractPrng, SHA256_HASH_SIZE};
 use secret_toolkit::permit::{Permit, RevokedPermits, TokenPermissions};
 use secret_toolkit::utils::{pad_handle_result, pad_query_result};
 
-use crate::amber::INVITE_CODES;
+use crate::amber::OneAmberStore;
 use crate::batch;
 use crate::legacy_support::{ViewingKey, ViewingKeyStore};
-use crate::msg::QueryMemberCodesResponse;
 use crate::msg::{
     AllowanceGivenResult, AllowanceReceivedResult, ContractStatusLevel, Decoyable, ExecuteAnswer,
     ExecuteMsg, InstantiateMsg, MigrateAnswer, MigrateMsg, QueryAnswer, QueryMsg, QueryWithPermit,
     ResponseStatus::Success,
 };
+use crate::msg::{QueryMemberCodesResponse, QueryMemberCountResponse};
 use crate::receiver::Snip20ReceiveMsg;
 use crate::state::{
     safe_add, AllowancesStore, BalancesStore, ConfigStore, Constants, MintersStore, PrngStore,
@@ -87,6 +88,7 @@ pub fn instantiate(
             // Here amount is also the amount to be added because the account has no prior balance
             BalancesStore::update_balance(
                 deps.storage,
+                &env,
                 &balance_address,
                 amount,
                 true,
@@ -403,25 +405,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             QueryMsg::ExchangeRate {} => query_exchange_rate(deps.storage),
             QueryMsg::Minters { .. } => query_minters(deps),
             QueryMsg::WithPermit { permit, query } => permit_queries(deps, permit, query),
-            QueryMsg::CheckTelegramCodes { codes } => query_valid_codes(deps.storage, codes),
+            QueryMsg::MemberCount {} => query_member_count(deps.storage),
+            QueryMsg::ValidCodes { codes } => query_valid_codes(deps.storage, codes),
             _ => viewing_keys_queries(deps, msg),
         },
         RESPONSE_BLOCK_SIZE,
     )
-}
-
-// TODO
-/// Given a list of codes, return only the ones that are valid.
-fn query_valid_codes(storage: &dyn Storage, codes: Vec<String>) -> StdResult<Binary> {
-    let valid = codes
-        .into_iter()
-        .filter_map(|code| match INVITE_CODES.contains(storage, &code) {
-            true => Some(code),
-            false => None,
-        })
-        .collect();
-
-    Ok(to_binary(&QueryMemberCodesResponse { valid })?)
 }
 
 fn permit_queries(deps: Deps, permit: Permit, query: QueryWithPermit) -> Result<Binary, StdError> {
@@ -549,29 +538,18 @@ fn permit_queries(deps: Deps, permit: Permit, query: QueryWithPermit) -> Result<
             }
             query_allowances_received(deps, account, page.unwrap_or(0), page_size)
         }
+        QueryWithPermit::MemberCode {} => {
+            if !permit.check_permission(&TokenPermissions::Balance) {
+                return Err(StdError::generic_err(format!(
+                    "No permission to query balance, got permissions {:?}",
+                    permit.params.permissions
+                )));
+            }
+
+            query_member_code(deps, account)
+        }
     }
 }
-
-// /// Check if a viewing key matches an OG account.
-// fn check_og_vk(storage: &dyn Storage, account: &CanonicalAddr, viewing_key: &str) -> StdResult<()> {
-//     let vk_store = prefixed_read(storage, b"viewingkey");
-//     let expected_hash = vk_store.get(account.as_slice());
-//     let expected_hash = match &expected_hash {
-//         Some(hash) => hash.as_slice(),
-//         None => &[0u8; VIEWING_KEY_SIZE],
-//     };
-//     let key_hash = sha_256(viewing_key.as_bytes());
-//     if ct_slice_compare(&key_hash, expected_hash) {
-//         Ok(())
-//     } else {
-//         Err(StdError::generic_err("unauthorized"))
-//     }
-// }
-//
-// /// Constant time slice comparison.
-// fn ct_slice_compare(s1: &[u8], s2: &[u8]) -> bool {
-//     bool::from(s1.ct_eq(s2))
-// }
 
 pub fn viewing_keys_queries(deps: Deps, msg: QueryMsg) -> StdResult<Binary> {
     let (addresses, key) = msg.get_validation_params(deps.api)?;
@@ -623,6 +601,7 @@ pub fn viewing_keys_queries(deps: Deps, msg: QueryMsg) -> StdResult<Binary> {
                     page_size,
                     ..
                 } => query_allowances_received(deps, spender, page.unwrap_or(0), page_size),
+                QueryMsg::MemberCode { address, .. } => query_member_code(deps, address),
                 _ => panic!("This query type does not require authentication"),
             };
         }
@@ -731,7 +710,7 @@ pub fn query_transactions(
     page_size: u32,
     should_filter_decoys: Option<bool>,
 ) -> StdResult<Binary> {
-    // Notice that if query_transactions() was called by a viewking-key call, the address of
+    // Notice that if query_transactions() was called by a viewing-key call, the address of
     // 'account' has already been validated.
     // The address of 'account' should not be validated if query_transactions() was called by a
     // permit call, for compatibility with non-Secret addresses.
@@ -755,33 +734,12 @@ pub fn query_transactions(
 }
 
 pub fn query_balance(deps: Deps, account: String) -> StdResult<Binary> {
-    // Notice that if query_balance() was called by a viewking-key call, the address of 'account'
+    // Notice that if query_balance() was called by a viewing-key call, the address of 'account'
     // has already been validated.
     // The address of 'account' should not be validated if query_balance() was called by a permit
     // call, for compatibility with non-Secret addresses.
     let account = Addr::unchecked(account);
     let account = deps.api.addr_canonicalize(account.as_str())?;
-
-    // ------------------------------- //
-    // let og_account = deps.api.addr_canonicalize(account.as_str())?;
-    //
-    // // one option
-    // if is_og(og_account) {
-    //     let amount = Uint128::new(BalancesStore::v_0_10_load(deps.storage, &og_account));
-    //     let response = QueryAnswer::Balance { amount };
-    //     return to_binary(&response);
-    // }
-    //
-    // // another option
-    // let og_balance_key = [b"\x00\x08balances", og_account.as_slice()].concat();
-    //
-    // if let Some(balance_bytes) = &deps.storage.get(&og_balance_key) {
-    //     let balance = slice_to_u128(&balance_bytes).unwrap();
-    //     let amount = Uint128::new(balance);
-    //     let response = QueryAnswer::Balance { amount };
-    //     return to_binary(&response);
-    // }
-    // ------------------------------- //
 
     let amount = Uint128::new(BalancesStore::load(deps.storage, &account));
     let response = QueryAnswer::Balance { amount };
@@ -792,6 +750,31 @@ fn query_minters(deps: Deps) -> StdResult<Binary> {
     let minters = MintersStore::load(deps.storage)?;
 
     let response = QueryAnswer::Minters { minters };
+    to_binary(&response)
+}
+
+fn query_member_count(storage: &dyn Storage) -> StdResult<Binary> {
+    let members = OneAmberStore::get_member_count(storage);
+    let response = QueryMemberCountResponse { members };
+    to_binary(&response)
+}
+
+fn query_member_code(deps: Deps, account: String) -> StdResult<Binary> {
+    // Notice that if query_member_code() was called by a viewing-key call, the address of
+    // 'account' has already been validated.
+    // The address of 'account' should not be validated if query_member_code() was called by a
+    // permit call, for compatibility with non-Secret addresses.
+    let account = Addr::unchecked(account);
+    let account = deps.api.addr_canonicalize(account.as_str())?;
+
+    let code = OneAmberStore::get_code(deps.storage, &account);
+    let response = QueryAnswer::MemberCode { code };
+    to_binary(&response)
+}
+
+fn query_valid_codes(storage: &dyn Storage, codes: Vec<String>) -> StdResult<Binary> {
+    let valid_codes = OneAmberStore::validate_codes(storage, codes);
+    let response = QueryMemberCodesResponse { valid_codes };
     to_binary(&response)
 }
 
@@ -866,6 +849,7 @@ fn remove_supported_denoms(
 #[allow(clippy::too_many_arguments)]
 fn try_mint_impl(
     deps: &mut DepsMut,
+    env: &Env,
     minter: Addr,
     recipient: Addr,
     amount: Uint128,
@@ -883,6 +867,7 @@ fn try_mint_impl(
 
     BalancesStore::update_balance(
         deps.storage,
+        env,
         &recipient,
         raw_amount,
         true,
@@ -941,6 +926,7 @@ fn try_mint(
     // Note that even when minted_amount is equal to 0 we still want to perform the operations for logic consistency
     try_mint_impl(
         &mut deps,
+        &env,
         info.sender,
         recipient,
         Uint128::new(minted_amount),
@@ -985,6 +971,7 @@ fn try_batch_mint(
         let recipient = deps.api.addr_validate(action.recipient.as_str())?;
         try_mint_impl(
             &mut deps,
+            &env,
             info.sender.clone(),
             recipient,
             Uint128::new(actual_amount),
@@ -1173,6 +1160,7 @@ fn try_deposit(
 
     BalancesStore::update_balance(
         deps.storage,
+        &env,
         sender_address,
         raw_amount,
         true,
@@ -1243,6 +1231,7 @@ fn try_redeem(
 
     BalancesStore::update_balance(
         deps.storage,
+        &env,
         &sender_address,
         amount_raw,
         false,
@@ -1297,6 +1286,7 @@ fn try_redeem(
 #[allow(clippy::too_many_arguments)]
 fn try_transfer_impl(
     deps: &mut DepsMut,
+    env: &Env,
     sender: &Addr,
     recipient: &Addr,
     amount: Uint128,
@@ -1311,6 +1301,7 @@ fn try_transfer_impl(
 
     perform_transfer(
         deps.storage,
+        env,
         &sender,
         &recipient,
         amount.u128(),
@@ -1350,6 +1341,7 @@ fn try_transfer(
 
     try_transfer_impl(
         &mut deps,
+        &env,
         &info.sender,
         &recipient,
         amount,
@@ -1373,6 +1365,7 @@ fn try_batch_transfer(
         let recipient = deps.api.addr_validate(action.recipient.as_str())?;
         try_transfer_impl(
             &mut deps,
+            &env,
             &info.sender,
             &recipient,
             action.amount,
@@ -1423,6 +1416,7 @@ fn try_add_receiver_api_callback(
 #[allow(clippy::too_many_arguments)]
 fn try_send_impl(
     deps: &mut DepsMut,
+    env: &Env,
     messages: &mut Vec<CosmosMsg>,
     sender: Addr,
     recipient: Addr,
@@ -1436,6 +1430,7 @@ fn try_send_impl(
 ) -> StdResult<()> {
     try_transfer_impl(
         deps,
+        env,
         &sender,
         &recipient,
         amount,
@@ -1478,6 +1473,7 @@ fn try_send(
     let mut messages = vec![];
     try_send_impl(
         &mut deps,
+        &env,
         &mut messages,
         info.sender,
         recipient,
@@ -1507,6 +1503,7 @@ fn try_batch_send(
         let recipient = deps.api.addr_validate(action.recipient.as_str())?;
         try_send_impl(
             &mut deps,
+            &env,
             &mut messages,
             info.sender.clone(),
             recipient,
@@ -1590,6 +1587,7 @@ fn try_transfer_from_impl(
 
     perform_transfer(
         deps.storage,
+        env,
         owner,
         recipient,
         raw_amount,
@@ -1816,6 +1814,7 @@ fn try_burn_from(
 
     BalancesStore::update_balance(
         deps.storage,
+        env,
         &owner,
         raw_amount,
         false,
@@ -1880,6 +1879,7 @@ fn try_batch_burn_from(
 
         BalancesStore::update_balance(
             deps.storage,
+            env,
             &owner,
             amount,
             false,
@@ -2092,6 +2092,7 @@ fn try_burn(
 
     BalancesStore::update_balance(
         deps.storage,
+        &env,
         &sender,
         raw_amount,
         false,
@@ -2127,15 +2128,17 @@ fn try_burn(
 
 fn perform_transfer(
     store: &mut dyn Storage,
+    env: &Env,
     from: &CanonicalAddr,
     to: &CanonicalAddr,
     amount: u128,
     decoys: &Option<Vec<CanonicalAddr>>,
     account_random_pos: &Option<usize>,
 ) -> StdResult<()> {
-    BalancesStore::update_balance(store, from, amount, false, "transfer", &None, &None)?;
+    BalancesStore::update_balance(store, env, from, amount, false, "transfer", &None, &None)?;
     BalancesStore::update_balance(
         store,
+        env,
         to,
         amount,
         true,

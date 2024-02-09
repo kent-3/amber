@@ -8,7 +8,7 @@ Download code 563 from secret-4. Upload to pulsar-3 and instantiate.
 secretcli query compute code 563 code563.wasm
 secretcli tx compute store code563.wasm --from pulsar --gas 5000000
 JSON='{ "name": "Amber", "admin": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "symbol": "AMBER", "decimals": 6, "initial_balances": [ { "address": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "amount": "8888000000" } ], "prng_seed": "YW1iZXIgcm9ja3M=", "config": { "public_total_supply": true, "enable_deposit": false, "enable_redeem": false, "enable_mint": false, "enable_burn": false } }'
-secretcli tx compute instantiate 3389 $JSON --label "amber563 with admin" --from pulsar --admin secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj
+secretcli tx compute instantiate 3389 "$JSON" --label "amber563 with admin" --from pulsar --admin secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj
 ```
 
 > code_id: 3389
@@ -123,7 +123,7 @@ Testing reusing old viewing key and balance stores.
 
 ```
 JSON='{ "name": "Amber", "admin": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "symbol": "AMBER", "decimals": 6, "initial_balances": [ { "address": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "amount": "8888000000" } ], "prng_seed": "YW1iZXIgcm9ja3M=", "config": { "public_total_supply": true, "enable_deposit": false, "enable_redeem": false, "enable_mint": false, "enable_burn": false } }'
-secretcli tx compute instantiate 3389 $JSON --label "amber563 with admin 3" --from pulsar --admin secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj
+secretcli tx compute instantiate 3389 "$JSON" --label "amber563 with admin 3" --from pulsar --admin secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj
 ```
 
 > contract_address: secret1rngq8jlggqwz4pvvn2c2sjl8fus79meg4k7uyj
@@ -150,7 +150,7 @@ Major update! Trying to implement a version where no data migrates. Reuse origin
 
 ```
 JSON='{ "name": "Amber", "admin": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "symbol": "AMBER", "decimals": 6, "initial_balances": [ { "address": "secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj", "amount": "8888000000" } ], "prng_seed": "YW1iZXIgcm9ja3M=", "config": { "public_total_supply": true, "enable_deposit": true, "enable_redeem": true, "enable_mint": true, "enable_burn": true } }'
-secretcli tx compute instantiate 3389 $JSON --label "amber563 with admin 6" --from pulsar --admin secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj
+secretcli tx compute instantiate 3389 "$JSON" --label "amber563 with admin 6" --from pulsar --admin secret1r8w55329ukm802sdy0kr3jd5vq8ugtwt8h9djj
 ```
 
 > code_id: 3714

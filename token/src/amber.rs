@@ -5,11 +5,32 @@ use secret_toolkit::crypto::{sha_256, ContractPrng};
 use secret_toolkit::storage::{Keymap, Keyset};
 
 /// A set of accounts with 1+ AMBER.
-pub static OAC_MEMBERS: Keyset<CanonicalAddr> = Keyset::new(b"oac");
+pub static OAC_MEMBERS: Keyset<CanonicalAddr> = Keyset::new(b"members");
 /// A set of valid codes used to access something.
 pub static OAC_INVITE_CODES: Keyset<[u8; 32]> = Keyset::new(b"invite_codes");
 /// A map of accounts with 1+ AMBER to a unique code used to access something.
-pub static OAC_MEMBER_CODES: Keymap<CanonicalAddr, [u8; 32]> = Keymap::new(b"telegram");
+pub static OAC_MEMBER_CODES: Keymap<CanonicalAddr, [u8; 32]> = Keymap::new(b"member_codes");
+
+pub mod special {
+    use cosmwasm_std::{StdError, StdResult, Storage};
+    use secret_toolkit::crypto::sha_256;
+    use secret_toolkit::storage::Item;
+
+    pub static SPECIAL_KEY: Item<[u8; 32]> = Item::new(b"special_key");
+
+    pub fn set_special_key(store: &mut dyn Storage, key: String) -> StdResult<()> {
+        SPECIAL_KEY.save(store, &sha_256(key.as_bytes()))
+    }
+
+    pub fn check_special_key(store: &dyn Storage, key: String) -> StdResult<()> {
+        let key_hash = sha_256(key.as_bytes());
+        if key_hash == SPECIAL_KEY.load(store)? {
+            Ok(())
+        } else {
+            Err(StdError::generic_err("not authorized"))
+        }
+    }
+}
 
 pub struct OneAmberStore {}
 impl OneAmberStore {
@@ -18,10 +39,11 @@ impl OneAmberStore {
         OAC_MEMBERS.get_len(storage).unwrap_or_default()
     }
 
-    pub fn get_code(storage: &dyn Storage, account: &CanonicalAddr) -> Option<String> {
+    pub fn get_code(storage: &dyn Storage, account: &CanonicalAddr) -> String {
         OAC_MEMBER_CODES
             .get(storage, account)
             .map(|code_bytes| URL_SAFE_NO_PAD.encode(code_bytes))
+            .unwrap_or_default()
     }
 
     /// Given a list of codes, return only the ones that are valid.

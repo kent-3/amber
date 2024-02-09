@@ -1,1 +1,1 @@
-69db5cf0a766ed412bf2ffdb92c42f67c295e694fa54a4d2e9f3f9b3433d781b *./contract.wasm.gz
+aa2b06698fb32555a266a7d7ebda8ef1c3afea6d1bf9849c0225891e662766f0 *./contract.wasm.gz

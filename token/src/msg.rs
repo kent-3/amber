@@ -496,7 +496,9 @@ pub enum QueryMsg {
         permit: Permit,
         query: QueryWithPermit,
     },
-    MemberCount {},
+    MemberCount {
+        key: String,
+    },
     MemberCode {
         address: String,
         key: String,
@@ -638,21 +640,24 @@ pub enum QueryAnswer {
     Minters {
         minters: Vec<Addr>,
     },
-    MemberCode {
-        code: Option<String>,
-    },
-}
-
-#[derive(Serialize, Deserialize, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
-pub struct QueryMemberCodesResponse {
-    pub valid_codes: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct QueryMemberCountResponse {
     pub members: u32,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct QueryMemberCodeResponse {
+    pub code: String,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct QueryValidCodesResponse {
+    pub valid_codes: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug)]

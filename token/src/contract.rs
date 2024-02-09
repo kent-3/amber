@@ -20,7 +20,7 @@ use crate::msg::{
     ExecuteMsg, InstantiateMsg, MigrateAnswer, MigrateMsg, QueryAnswer, QueryMsg, QueryWithPermit,
     ResponseStatus::Success,
 };
-use crate::msg::{QueryMemberCodesResponse, QueryMemberCountResponse};
+use crate::msg::{QueryMemberCodeResponse, QueryMemberCountResponse, QueryValidCodesResponse};
 use crate::receiver::Snip20ReceiveMsg;
 use crate::state::{
     safe_add, AllowancesStore, BalancesStore, ConfigStore, Constants, MintersStore, PrngStore,
@@ -405,7 +405,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             QueryMsg::ExchangeRate {} => query_exchange_rate(deps.storage),
             QueryMsg::Minters { .. } => query_minters(deps),
             QueryMsg::WithPermit { permit, query } => permit_queries(deps, permit, query),
-            QueryMsg::MemberCount {} => query_member_count(deps.storage),
+            QueryMsg::MemberCount { key } => query_member_count(deps.storage, key),
             QueryMsg::ValidCodes { codes } => query_valid_codes(deps.storage, codes),
             _ => viewing_keys_queries(deps, msg),
         },
@@ -753,7 +753,9 @@ fn query_minters(deps: Deps) -> StdResult<Binary> {
     to_binary(&response)
 }
 
-fn query_member_count(storage: &dyn Storage) -> StdResult<Binary> {
+fn query_member_count(storage: &dyn Storage, key: String) -> StdResult<Binary> {
+    super::amber::special::check_special_key(storage, key)?;
+
     let members = OneAmberStore::get_member_count(storage);
     let response = QueryMemberCountResponse { members };
     to_binary(&response)
@@ -768,13 +770,13 @@ fn query_member_code(deps: Deps, account: String) -> StdResult<Binary> {
     let account = deps.api.addr_canonicalize(account.as_str())?;
 
     let code = OneAmberStore::get_code(deps.storage, &account);
-    let response = QueryAnswer::MemberCode { code };
+    let response = QueryMemberCodeResponse { code };
     to_binary(&response)
 }
 
 fn query_valid_codes(storage: &dyn Storage, codes: Vec<String>) -> StdResult<Binary> {
     let valid_codes = OneAmberStore::validate_codes(storage, codes);
-    let response = QueryMemberCodesResponse { valid_codes };
+    let response = QueryValidCodesResponse { valid_codes };
     to_binary(&response)
 }
 

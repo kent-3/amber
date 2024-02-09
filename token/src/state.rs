@@ -331,7 +331,7 @@ impl BalancesStore {
                     }
                 };
 
-                OacStore::set_status(store, account, previous_balance, balance)?;
+                OacStore::update_member_status(store, account, previous_balance, balance)?;
 
                 Self::save(store, account, balance);
                 Ok(())
@@ -376,7 +376,12 @@ impl BalancesStore {
                                 }
                             }
                         };
-                        OacStore::set_status(store, account, previous_balance, new_balance)?;
+                        OacStore::update_member_status(
+                            store,
+                            account,
+                            previous_balance,
+                            new_balance,
+                        )?;
                     }
                     Self::save(store, acc, new_balance);
                 }

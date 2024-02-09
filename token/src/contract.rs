@@ -11,11 +11,10 @@ use secret_toolkit::crypto::{sha_256, ContractPrng, SHA256_HASH_SIZE};
 use secret_toolkit::permit::{Permit, RevokedPermits, TokenPermissions};
 use secret_toolkit::utils::{pad_handle_result, pad_query_result};
 
-use crate::amber::bot::check_bot_key;
-use crate::amber::OacStore;
+use crate::amber::INVITE_CODES;
 use crate::batch;
 use crate::legacy_support::{ViewingKey, ViewingKeyStore};
-use crate::msg::QueryTelegramMembersResponse;
+use crate::msg::QueryMemberCodesResponse;
 use crate::msg::{
     AllowanceGivenResult, AllowanceReceivedResult, ContractStatusLevel, Decoyable, ExecuteAnswer,
     ExecuteMsg, InstantiateMsg, MigrateAnswer, MigrateMsg, QueryAnswer, QueryMsg, QueryWithPermit,
@@ -389,8 +388,6 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::RemoveSupportedDenoms { denoms, .. } => {
             remove_supported_denoms(deps, info, denoms)
         }
-        ExecuteMsg::AddTelegramHandle { handle } => add_telegram_handle(deps, info, handle),
-        ExecuteMsg::RemoveTelegramHandle { .. } => remove_telegram_handle(deps, info),
     };
 
     pad_handle_result(response, RESPONSE_BLOCK_SIZE)
@@ -406,19 +403,25 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             QueryMsg::ExchangeRate {} => query_exchange_rate(deps.storage),
             QueryMsg::Minters { .. } => query_minters(deps),
             QueryMsg::WithPermit { permit, query } => permit_queries(deps, permit, query),
-            QueryMsg::TelegramMembers { key } => query_telegram_members(deps.storage, key),
+            QueryMsg::CheckTelegramCodes { codes } => query_valid_codes(deps.storage, codes),
             _ => viewing_keys_queries(deps, msg),
         },
         RESPONSE_BLOCK_SIZE,
     )
 }
 
-fn query_telegram_members(storage: &dyn Storage, key: String) -> StdResult<Binary> {
-    check_bot_key(storage, key)?;
+// TODO
+/// Given a list of codes, return only the ones that are valid.
+fn query_valid_codes(storage: &dyn Storage, codes: Vec<String>) -> StdResult<Binary> {
+    let valid = codes
+        .into_iter()
+        .filter_map(|code| match INVITE_CODES.contains(storage, &code) {
+            true => Some(code),
+            false => None,
+        })
+        .collect();
 
-    let members = OacStore::get_oac_telegram_handles(storage)?;
-
-    Ok(to_binary(&QueryTelegramMembersResponse { members })?)
+    Ok(to_binary(&QueryMemberCodesResponse { valid })?)
 }
 
 fn permit_queries(deps: Deps, permit: Permit, query: QueryWithPermit) -> Result<Binary, StdError> {
@@ -855,29 +858,6 @@ fn remove_supported_denoms(
 
     Ok(
         Response::new().set_data(to_binary(&ExecuteAnswer::RemoveSupportedDenoms {
-            status: Success,
-        })?),
-    )
-}
-
-fn add_telegram_handle(deps: DepsMut, info: MessageInfo, username: String) -> StdResult<Response> {
-    let account = deps.api.addr_canonicalize(info.sender.as_str())?;
-    OacStore::save_telegram_handle(deps.storage, &account, &username)?;
-
-    Ok(
-        Response::new().set_data(to_binary(&ExecuteAnswer::AddTelegramHandle {
-            status: Success,
-            handle_added: username,
-        })?),
-    )
-}
-
-fn remove_telegram_handle(deps: DepsMut, info: MessageInfo) -> StdResult<Response> {
-    let account = deps.api.addr_canonicalize(info.sender.as_str())?;
-    OacStore::remove_telegram_handle(deps.storage, &account)?;
-
-    Ok(
-        Response::new().set_data(to_binary(&ExecuteAnswer::RemoveTelegramHandle {
             status: Success,
         })?),
     )

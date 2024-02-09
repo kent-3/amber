@@ -259,25 +259,15 @@ pub enum ExecuteMsg {
         padding: Option<String>,
     },
     /// Add deposit/redeem support for these coin denoms
-    AddSupportedDenoms {
-        denoms: Vec<String>,
-    },
+    AddSupportedDenoms { denoms: Vec<String> },
     /// Remove deposit/redeem support for these coin denoms
-    RemoveSupportedDenoms {
-        denoms: Vec<String>,
-    },
+    RemoveSupportedDenoms { denoms: Vec<String> },
 
     // Permit
     RevokePermit {
         permit_name: String,
         padding: Option<String>,
     },
-
-    // Fun
-    AddTelegramHandle {
-        handle: String,
-    },
-    RemoveTelegramHandle {},
 }
 
 pub trait Decoyable {
@@ -454,19 +444,6 @@ pub enum ExecuteAnswer {
     RevokePermit {
         status: ResponseStatus,
     },
-
-    // Fun
-    AddTelegramHandle {
-        status: ResponseStatus,
-        handle_added: String,
-    },
-    RemoveTelegramHandle {
-        status: ResponseStatus,
-    },
-    // only Admin can do
-    SetBotKey {
-        key: String,
-    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -519,8 +496,8 @@ pub enum QueryMsg {
         permit: Permit,
         query: QueryWithPermit,
     },
-    TelegramMembers {
-        key: String,
+    CheckTelegramCodes {
+        codes: Vec<String>,
     },
 }
 
@@ -655,8 +632,15 @@ pub enum QueryAnswer {
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub struct QueryTelegramMembersResponse {
-    pub members: Vec<String>,
+pub struct QueryMemberCodesResponse {
+    pub valid: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct CodeStatus {
+    pub code: String,
+    pub status: bool,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]

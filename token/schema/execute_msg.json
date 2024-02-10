@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "HandleMsg",
-  "anyOf": [
+  "title": "ExecuteMsg",
+  "oneOf": [
     {
       "type": "object",
       "required": [
@@ -17,10 +17,29 @@
             "amount": {
               "$ref": "#/definitions/Uint128"
             },
+            "decoys": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
             "denom": {
               "type": [
                 "string",
                 "null"
+              ]
+            },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
               ]
             },
             "padding": {
@@ -31,7 +50,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -42,6 +62,25 @@
         "deposit": {
           "type": "object",
           "properties": {
+            "decoys": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "padding": {
               "type": [
                 "string",
@@ -50,7 +89,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -68,6 +108,25 @@
             "amount": {
               "$ref": "#/definitions/Uint128"
             },
+            "decoys": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "memo": {
               "type": [
                 "string",
@@ -81,11 +140,12 @@
               ]
             },
             "recipient": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -102,6 +162,25 @@
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
+            },
+            "decoys": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "memo": {
               "type": [
@@ -126,7 +205,7 @@
               ]
             },
             "recipient": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             },
             "recipient_code_hash": {
               "type": [
@@ -136,7 +215,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -156,6 +236,16 @@
                 "$ref": "#/definitions/TransferAction"
               }
             },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "padding": {
               "type": [
                 "string",
@@ -164,7 +254,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -184,6 +275,16 @@
                 "$ref": "#/definitions/SendAction"
               }
             },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "padding": {
               "type": [
                 "string",
@@ -192,7 +293,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -209,6 +311,25 @@
             "amount": {
               "$ref": "#/definitions/Uint128"
             },
+            "decoys": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "memo": {
               "type": [
                 "string",
@@ -223,7 +344,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -248,7 +370,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -273,7 +396,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -298,7 +422,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -331,11 +456,12 @@
               ]
             },
             "spender": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -368,11 +494,12 @@
               ]
             },
             "spender": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -391,6 +518,25 @@
             "amount": {
               "$ref": "#/definitions/Uint128"
             },
+            "decoys": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "memo": {
               "type": [
                 "string",
@@ -398,7 +544,7 @@
               ]
             },
             "owner": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             },
             "padding": {
               "type": [
@@ -407,11 +553,12 @@
               ]
             },
             "recipient": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -430,6 +577,25 @@
             "amount": {
               "$ref": "#/definitions/Uint128"
             },
+            "decoys": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "memo": {
               "type": [
                 "string",
@@ -447,7 +613,7 @@
               ]
             },
             "owner": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             },
             "padding": {
               "type": [
@@ -456,7 +622,7 @@
               ]
             },
             "recipient": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             },
             "recipient_code_hash": {
               "type": [
@@ -466,7 +632,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -486,6 +653,16 @@
                 "$ref": "#/definitions/TransferFromAction"
               }
             },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "padding": {
               "type": [
                 "string",
@@ -494,7 +671,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -514,6 +692,16 @@
                 "$ref": "#/definitions/SendFromAction"
               }
             },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "padding": {
               "type": [
                 "string",
@@ -522,7 +710,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -540,6 +729,25 @@
             "amount": {
               "$ref": "#/definitions/Uint128"
             },
+            "decoys": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "memo": {
               "type": [
                 "string",
@@ -547,7 +755,7 @@
               ]
             },
             "owner": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             },
             "padding": {
               "type": [
@@ -557,7 +765,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -577,6 +786,16 @@
                 "$ref": "#/definitions/BurnFromAction"
               }
             },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "padding": {
               "type": [
                 "string",
@@ -585,7 +804,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -603,6 +823,25 @@
             "amount": {
               "$ref": "#/definitions/Uint128"
             },
+            "decoys": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "memo": {
               "type": [
                 "string",
@@ -616,11 +855,12 @@
               ]
             },
             "recipient": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -640,6 +880,16 @@
                 "$ref": "#/definitions/MintAction"
               }
             },
+            "entropy": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "padding": {
               "type": [
                 "string",
@@ -648,7 +898,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -665,7 +916,7 @@
             "minters": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/HumanAddr"
+                "type": "string"
               }
             },
             "padding": {
@@ -676,7 +927,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -693,7 +945,7 @@
             "minters": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/HumanAddr"
+                "type": "string"
               }
             },
             "padding": {
@@ -704,7 +956,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -721,7 +974,7 @@
             "minters": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/HumanAddr"
+                "type": "string"
               }
             },
             "padding": {
@@ -732,7 +985,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -747,7 +1001,7 @@
           ],
           "properties": {
             "address": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             },
             "padding": {
               "type": [
@@ -757,7 +1011,8 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -782,7 +1037,56 @@
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Add deposit/redeem support for these coin denoms",
+      "type": "object",
+      "required": [
+        "add_supported_denoms"
+      ],
+      "properties": {
+        "add_supported_denoms": {
+          "type": "object",
+          "required": [
+            "denoms"
+          ],
+          "properties": {
+            "denoms": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Remove deposit/redeem support for these coin denoms",
+      "type": "object",
+      "required": [
+        "remove_supported_denoms"
+      ],
+      "properties": {
+        "remove_supported_denoms": {
+          "type": "object",
+          "required": [
+            "denoms"
+          ],
+          "properties": {
+            "denoms": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -796,17 +1100,28 @@
             "permit_name"
           ],
           "properties": {
+            "padding": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "permit_name": {
               "type": "string"
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
     "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
       "type": "string"
     },
     "BurnFromAction": {
@@ -819,6 +1134,15 @@
         "amount": {
           "$ref": "#/definitions/Uint128"
         },
+        "decoys": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Addr"
+          }
+        },
         "memo": {
           "type": [
             "string",
@@ -826,7 +1150,7 @@
           ]
         },
         "owner": {
-          "$ref": "#/definitions/HumanAddr"
+          "type": "string"
         }
       }
     },
@@ -838,9 +1162,6 @@
         "stop_all"
       ]
     },
-    "HumanAddr": {
-      "type": "string"
-    },
     "MintAction": {
       "type": "object",
       "required": [
@@ -851,6 +1172,15 @@
         "amount": {
           "$ref": "#/definitions/Uint128"
         },
+        "decoys": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Addr"
+          }
+        },
         "memo": {
           "type": [
             "string",
@@ -858,7 +1188,7 @@
           ]
         },
         "recipient": {
-          "$ref": "#/definitions/HumanAddr"
+          "type": "string"
         }
       }
     },
@@ -871,6 +1201,15 @@
       "properties": {
         "amount": {
           "$ref": "#/definitions/Uint128"
+        },
+        "decoys": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Addr"
+          }
         },
         "memo": {
           "type": [
@@ -889,7 +1228,7 @@
           ]
         },
         "recipient": {
-          "$ref": "#/definitions/HumanAddr"
+          "type": "string"
         },
         "recipient_code_hash": {
           "type": [
@@ -910,6 +1249,15 @@
         "amount": {
           "$ref": "#/definitions/Uint128"
         },
+        "decoys": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Addr"
+          }
+        },
         "memo": {
           "type": [
             "string",
@@ -927,10 +1275,10 @@
           ]
         },
         "owner": {
-          "$ref": "#/definitions/HumanAddr"
+          "type": "string"
         },
         "recipient": {
-          "$ref": "#/definitions/HumanAddr"
+          "type": "string"
         },
         "recipient_code_hash": {
           "type": [
@@ -950,6 +1298,15 @@
         "amount": {
           "$ref": "#/definitions/Uint128"
         },
+        "decoys": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Addr"
+          }
+        },
         "memo": {
           "type": [
             "string",
@@ -957,7 +1314,7 @@
           ]
         },
         "recipient": {
-          "$ref": "#/definitions/HumanAddr"
+          "type": "string"
         }
       }
     },
@@ -972,6 +1329,15 @@
         "amount": {
           "$ref": "#/definitions/Uint128"
         },
+        "decoys": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Addr"
+          }
+        },
         "memo": {
           "type": [
             "string",
@@ -979,14 +1345,15 @@
           ]
         },
         "owner": {
-          "$ref": "#/definitions/HumanAddr"
+          "type": "string"
         },
         "recipient": {
-          "$ref": "#/definitions/HumanAddr"
+          "type": "string"
         }
       }
     },
     "Uint128": {
+      "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use secret_cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
       "type": "string"
     }
   }

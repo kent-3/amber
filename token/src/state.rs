@@ -1,3 +1,66 @@
+//! ```text
+//! Key Namespaces:
+//!
+//! PREFIX_CONFIG
+//! |-- KEY_CONSTANTS
+//! |   └-- Constants
+//! |-- KEY_TOTAL_SUPPLY
+//! |   └-- u128
+//! |-- KEY_CONTRACT_STATUS
+//! |   └-- u8
+//! |-- KEY_MINTERS
+//! |   └-- Vec<Addr>
+//! └-- KEY_TX_COUNT
+//!     └-- u64
+//!
+//! PREFIX_BALANCES
+//! |-- CanonicalAddr
+//! |   └-- u128
+//! |-- CanonicalAddr
+//! |   └-- u128
+//! └-- CanonicalAddr
+//!     └-- u128
+//!
+//! [PREFIX_ALLOWED + spender_canonical]
+//! |-- owner: Addr
+//! |-- owner: Addr
+//! └-- owner: Addr
+//!
+//! [PREFIX_ALLOWANCES + owner_canonical]
+//! |-- spender_1: CanonicalAddr
+//! |   └-- Allowance
+//! |-- spender_2: CanonicalAddr
+//! |   └-- Allowance
+//! └-- spender_3: CanonicalAddr
+//!     └-- Allowance
+//!
+//! PREFIX_VIEW_KEY
+//! |-- account: CanonicalAddr
+//! |   └-- sha256(key)
+//! |-- account: CanonicalAddr
+//! |   └-- sha256(key)
+//! └-- account: CanonicalAddr
+//!     └-- sha256(key)
+//!
+//! PREFIX_RECEIVERS
+//! |-- Addr
+//! |   └-- code_hash
+//! |-- Addr
+//! |   └-- code_hash
+//! └-- Addr
+//!     └-- code_hash
+//!
+//! [PREFIX_TXS + addr_canonical]
+//! |-- StoredExtendedTx
+//! |-- StoredExtendedTx
+//! └-- StoredExtendedTx
+//!
+//! [PREFIX_TRANSFERS + addr_canonical]
+//! |-- StoredLegacyTransfer
+//! |-- StoredLegacyTransfer
+//! └-- StoredLegacyTransfer
+//! ```
+
 use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};

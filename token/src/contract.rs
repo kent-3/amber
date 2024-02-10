@@ -1,5 +1,6 @@
-/// This contract implements SNIP-20 standard:
-/// https://github.com/SecretFoundation/SNIPs/blob/master/SNIP-20.md
+//! This contract implements SNIP-20 standard:
+//! <https://github.com/SecretFoundation/SNIPs/blob/master/SNIP-20.md>
+
 use rand::RngCore;
 
 use cosmwasm_std::{

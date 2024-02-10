@@ -657,7 +657,7 @@ pub enum ContractStatusLevel {
     StopAll,
 }
 
-pub fn status_level_to_u8(status_level: ContractStatusLevel) -> u8 {
+pub fn status_level_to_u8(status_level: &ContractStatusLevel) -> u8 {
     match status_level {
         ContractStatusLevel::NormalRun => 0,
         ContractStatusLevel::StopAllButRedeems => 1,

@@ -12,6 +12,7 @@ use secret_toolkit::crypto::{sha_256, ContractPrng, SHA256_HASH_SIZE};
 use secret_toolkit::permit::{Permit, RevokedPermits, TokenPermissions};
 use secret_toolkit::utils::{pad_handle_result, pad_query_result};
 
+use crate::amber::OneAmberStore;
 use crate::batch;
 use crate::legacy_support::{ViewingKey, ViewingKeyStore};
 use crate::msg::{
@@ -403,6 +404,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             QueryMsg::ExchangeRate {} => query_exchange_rate(deps.storage),
             QueryMsg::Minters { .. } => query_minters(deps),
             QueryMsg::WithPermit { permit, query } => permit_queries(deps, permit, query),
+            QueryMsg::ValidCodes { codes } => query_valid_codes(deps.storage, codes),
             _ => viewing_keys_queries(deps, msg),
         },
         RESPONSE_BLOCK_SIZE,
@@ -534,6 +536,16 @@ fn permit_queries(deps: Deps, permit: Permit, query: QueryWithPermit) -> Result<
             }
             query_allowances_received(deps, account, page.unwrap_or(0), page_size)
         }
+        QueryWithPermit::MemberCode {} => {
+            if !permit.check_permission(&TokenPermissions::Balance) {
+                return Err(StdError::generic_err(format!(
+                    "No permission to query balance, got permissions {:?}",
+                    permit.params.permissions
+                )));
+            }
+
+            query_member_code(deps, account)
+        }
     }
 }
 
@@ -587,6 +599,7 @@ pub fn viewing_keys_queries(deps: Deps, msg: QueryMsg) -> StdResult<Binary> {
                     page_size,
                     ..
                 } => query_allowances_received(deps, spender, page.unwrap_or(0), page_size),
+                QueryMsg::MemberCode { address, .. } => query_member_code(deps, address),
                 _ => panic!("This query type does not require authentication"),
             };
         }
@@ -738,6 +751,34 @@ fn query_minters(deps: Deps) -> StdResult<Binary> {
     to_binary(&response)
 }
 
+// Removed for privacy concerns.
+// fn query_member_count(storage: &dyn Storage, key: String) -> StdResult<Binary> {
+//     super::amber::special::check_special_key(storage, key)?;
+//
+//     let members = OneAmberStore::get_member_count(storage);
+//     let response = QueryAnswer::MemberCount { members };
+//     to_binary(&response)
+// }
+
+fn query_member_code(deps: Deps, account: String) -> StdResult<Binary> {
+    // Notice that if query_member_code() was called by a viewing-key call, the address of
+    // 'account' has already been validated.
+    // The address of 'account' should not be validated if query_member_code() was called by a
+    // permit call, for compatibility with non-Secret addresses.
+    let account = Addr::unchecked(account);
+    let account = deps.api.addr_canonicalize(account.as_str())?;
+
+    let code = OneAmberStore::get_code(deps.storage, &account);
+    let response = QueryAnswer::MemberCode { code };
+    to_binary(&response)
+}
+
+fn query_valid_codes(storage: &dyn Storage, codes: Vec<String>) -> StdResult<Binary> {
+    let valid_codes = OneAmberStore::validate_codes(storage, codes);
+    let response = QueryAnswer::ValidCodes { codes: valid_codes };
+    to_binary(&response)
+}
+
 fn change_admin(deps: DepsMut, info: MessageInfo, address: String) -> StdResult<Response> {
     let address = deps.api.addr_validate(address.as_str())?;
 
@@ -809,6 +850,7 @@ fn remove_supported_denoms(
 #[allow(clippy::too_many_arguments)]
 fn try_mint_impl(
     deps: &mut DepsMut,
+    env: &Env,
     minter: Addr,
     recipient: Addr,
     amount: Uint128,
@@ -930,6 +972,7 @@ fn try_batch_mint(
         let recipient = deps.api.addr_validate(action.recipient.as_str())?;
         try_mint_impl(
             &mut deps,
+            &env,
             info.sender.clone(),
             recipient,
             Uint128::new(actual_amount),
@@ -1118,6 +1161,7 @@ fn try_deposit(
 
     BalancesStore::update_balance(
         deps.storage,
+        &env,
         sender_address,
         raw_amount,
         true,
@@ -1188,6 +1232,7 @@ fn try_redeem(
 
     BalancesStore::update_balance(
         deps.storage,
+        &env,
         &sender_address,
         amount_raw,
         false,
@@ -1242,6 +1287,7 @@ fn try_redeem(
 #[allow(clippy::too_many_arguments)]
 fn try_transfer_impl(
     deps: &mut DepsMut,
+    env: &Env,
     sender: &Addr,
     recipient: &Addr,
     amount: Uint128,
@@ -1296,6 +1342,7 @@ fn try_transfer(
 
     try_transfer_impl(
         &mut deps,
+        &env,
         &info.sender,
         &recipient,
         amount,
@@ -1319,6 +1366,7 @@ fn try_batch_transfer(
         let recipient = deps.api.addr_validate(action.recipient.as_str())?;
         try_transfer_impl(
             &mut deps,
+            &env,
             &info.sender,
             &recipient,
             action.amount,
@@ -1369,6 +1417,7 @@ fn try_add_receiver_api_callback(
 #[allow(clippy::too_many_arguments)]
 fn try_send_impl(
     deps: &mut DepsMut,
+    env: &Env,
     messages: &mut Vec<CosmosMsg>,
     sender: Addr,
     recipient: Addr,
@@ -1382,6 +1431,7 @@ fn try_send_impl(
 ) -> StdResult<()> {
     try_transfer_impl(
         deps,
+        env,
         &sender,
         &recipient,
         amount,
@@ -1424,6 +1474,7 @@ fn try_send(
     let mut messages = vec![];
     try_send_impl(
         &mut deps,
+        &env,
         &mut messages,
         info.sender,
         recipient,
@@ -1453,6 +1504,7 @@ fn try_batch_send(
         let recipient = deps.api.addr_validate(action.recipient.as_str())?;
         try_send_impl(
             &mut deps,
+            &env,
             &mut messages,
             info.sender.clone(),
             recipient,
@@ -1536,6 +1588,7 @@ fn try_transfer_from_impl(
 
     perform_transfer(
         deps.storage,
+        env,
         owner,
         recipient,
         raw_amount,
@@ -1762,6 +1815,7 @@ fn try_burn_from(
 
     BalancesStore::update_balance(
         deps.storage,
+        env,
         &owner,
         raw_amount,
         false,
@@ -1826,6 +1880,7 @@ fn try_batch_burn_from(
 
         BalancesStore::update_balance(
             deps.storage,
+            env,
             &owner,
             amount,
             false,
@@ -2038,6 +2093,7 @@ fn try_burn(
 
     BalancesStore::update_balance(
         deps.storage,
+        &env,
         &sender,
         raw_amount,
         false,
@@ -2073,15 +2129,17 @@ fn try_burn(
 
 fn perform_transfer(
     store: &mut dyn Storage,
+    env: &Env,
     from: &CanonicalAddr,
     to: &CanonicalAddr,
     amount: u128,
     decoys: &Option<Vec<CanonicalAddr>>,
     account_random_pos: &Option<usize>,
 ) -> StdResult<()> {
-    BalancesStore::update_balance(store, from, amount, false, "transfer", &None, &None)?;
+    BalancesStore::update_balance(store, env, from, amount, false, "transfer", &None, &None)?;
     BalancesStore::update_balance(
         store,
+        env,
         to,
         amount,
         true,

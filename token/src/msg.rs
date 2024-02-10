@@ -496,6 +496,13 @@ pub enum QueryMsg {
         permit: Permit,
         query: QueryWithPermit,
     },
+    MemberCode {
+        address: String,
+        key: String,
+    },
+    ValidCodes {
+        codes: Vec<String>,
+    },
 }
 
 impl QueryMsg {
@@ -532,6 +539,10 @@ impl QueryMsg {
                 let spender = api.addr_validate(spender.as_str())?;
                 Ok((vec![spender], key.clone()))
             }
+            Self::MemberCode { address, key } => {
+                let address = api.addr_validate(address.as_str())?;
+                Ok((vec![address], key.clone()))
+            }
             _ => panic!("This query type does not require authentication"),
         }
     }
@@ -566,6 +577,7 @@ pub enum QueryWithPermit {
         page_size: u32,
         should_filter_decoys: Option<bool>,
     },
+    MemberCode {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug)]
@@ -624,6 +636,12 @@ pub enum QueryAnswer {
     },
     Minters {
         minters: Vec<Addr>,
+    },
+    MemberCode {
+        code: String,
+    },
+    ValidCodes {
+        codes: Vec<String>,
     },
 }
 

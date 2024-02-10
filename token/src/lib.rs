@@ -1,5 +1,6 @@
 #![allow(clippy::too_many_arguments)]
 
+mod amber;
 mod batch;
 pub mod contract;
 mod legacy_support;

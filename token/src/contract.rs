@@ -654,7 +654,7 @@ pub fn query_transfers(
     account: String,
     page: u32,
     page_size: u32,
-    should_filter_decoys: bool,
+    should_filter_decoys: Option<bool>,
 ) -> StdResult<Binary> {
     // Notice that if query_transfers() was called by a viewking-key call, the address of 'account'
     // has already been validated.
@@ -667,7 +667,6 @@ pub fn query_transfers(
         account,
         page,
         page_size,
-        should_filter_decoys,
     )?;
 
     let result = QueryAnswer::TransferHistory {
@@ -682,7 +681,7 @@ pub fn query_transactions(
     account: String,
     page: u32,
     page_size: u32,
-    should_filter_decoys: bool,
+    should_filter_decoys: Option<bool>,
 ) -> StdResult<Binary> {
     // Notice that if query_transactions() was called by a viewking-key call, the address of
     // 'account' has already been validated.
@@ -5394,7 +5393,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 0,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         // let a: QueryAnswer = from_binary(&query_result.unwrap()).unwrap();
@@ -5410,7 +5409,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5424,7 +5423,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 2,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5438,7 +5437,7 @@ mod tests {
             key: "key".to_string(),
             page: Some(1),
             page_size: 2,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5546,7 +5545,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5560,7 +5559,7 @@ mod tests {
             key: "alice_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5574,7 +5573,7 @@ mod tests {
             key: "alice_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5588,7 +5587,7 @@ mod tests {
             key: "banana_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5602,7 +5601,7 @@ mod tests {
             key: "lior_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5804,7 +5803,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -5818,7 +5817,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transfers = match from_binary(&query_result.unwrap()).unwrap() {
@@ -6157,7 +6156,7 @@ mod tests {
             key: "lior_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transactions = match from_binary(&query_result.unwrap()).unwrap() {
@@ -6172,7 +6171,7 @@ mod tests {
             key: "alice_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: false,
+            should_filter_decoys: Some(false),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transactions = match from_binary(&query_result.unwrap()).unwrap() {
@@ -6187,7 +6186,7 @@ mod tests {
             key: "alice_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transactions = match from_binary(&query_result.unwrap()).unwrap() {
@@ -6202,7 +6201,7 @@ mod tests {
             key: "jhon_key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transactions = match from_binary(&query_result.unwrap()).unwrap() {
@@ -6217,7 +6216,7 @@ mod tests {
             key: "key".to_string(),
             page: None,
             page_size: 10,
-            should_filter_decoys: true,
+            should_filter_decoys: Some(true),
         };
         let query_result = query(deps.as_ref(), mock_env(), query_msg);
         let transactions = match from_binary(&query_result.unwrap()).unwrap() {

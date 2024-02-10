@@ -47,6 +47,7 @@ secret-toolkit-crypto = { git = "https://github.com/scrtlabs/secret-toolkit", fe
 schemars = "0.8.16"
 serde = { version = "1.0.196", default-features = false, features = ["derive"] }
 base64 = "0.21.7"
+bincode2 = "2.0.1"
 subtle = { version = "2.5.0", default-features = false }
 
 [dev-dependencies]

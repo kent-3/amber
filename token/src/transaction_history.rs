@@ -70,6 +70,7 @@ pub struct ExtendedTx {
 
 // Stored types:
 
+// REMOVED
 
 /// This type is the stored version of the legacy transfers
 #[derive(Serialize, Deserialize, Clone, Debug)]

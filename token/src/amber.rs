@@ -11,7 +11,9 @@ pub static OAC_INVITE_CODES: Keyset<[u8; 32]> = Keyset::new(b"invite_codes");
 /// A map of accounts with 1+ AMBER to a unique code used to access something.
 pub static OAC_MEMBER_CODES: Keymap<CanonicalAddr, [u8; 32]> = Keymap::new(b"member_codes");
 
+#[allow(unused)]
 pub mod special {
+    //! Not currently in use. Could be used for privileged queries.
     use cosmwasm_std::{StdError, StdResult, Storage};
     use secret_toolkit::crypto::sha_256;
     use secret_toolkit::storage::Item;
@@ -35,9 +37,9 @@ pub mod special {
 pub struct OneAmberStore {}
 impl OneAmberStore {
     /// Returns the current known number of users with 1+ AMBER.
-    pub fn get_member_count(storage: &dyn Storage) -> u32 {
-        OAC_MEMBERS.get_len(storage).unwrap_or_default()
-    }
+    // pub fn get_member_count(storage: &dyn Storage) -> u32 {
+    //     OAC_MEMBERS.get_len(storage).unwrap_or_default()
+    // }
 
     pub fn get_code(storage: &dyn Storage, account: &CanonicalAddr) -> String {
         OAC_MEMBER_CODES

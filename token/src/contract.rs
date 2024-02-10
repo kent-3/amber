@@ -1,5 +1,5 @@
 //! This contract implements SNIP-20 standard:
-//! https://github.com/SecretFoundation/SNIPs/blob/master/SNIP-20.md
+//! <https://github.com/SecretFoundation/SNIPs/blob/master/SNIP-20.md>
 
 use rand::RngCore;
 
@@ -20,7 +20,7 @@ use crate::msg::{
     ExecuteMsg, InstantiateMsg, MigrateAnswer, MigrateMsg, QueryAnswer, QueryMsg, QueryWithPermit,
     ResponseStatus::Success,
 };
-use crate::msg::{QueryMemberCodeResponse, QueryMemberCountResponse, QueryValidCodesResponse};
+use crate::msg::{QueryMemberCodeResponse, QueryValidCodesResponse};
 use crate::receiver::Snip20ReceiveMsg;
 use crate::state::{
     safe_add, AllowancesStore, BalancesStore, ConfigStore, Constants, MintersStore, PrngStore,
@@ -76,7 +76,7 @@ pub fn instantiate(
     let mut total_supply: u128 = 0;
 
     let prng_seed_hashed = sha_256(&msg.prng_seed.0);
-    // PrngStore::save(deps.storage, prng_seed_hashed)?;
+    PrngStore::save(deps.storage, prng_seed_hashed)?;
 
     {
         let admin = deps.api.addr_canonicalize(admin.as_str())?;
@@ -405,7 +405,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             QueryMsg::ExchangeRate {} => query_exchange_rate(deps.storage),
             QueryMsg::Minters { .. } => query_minters(deps),
             QueryMsg::WithPermit { permit, query } => permit_queries(deps, permit, query),
-            QueryMsg::MemberCount { key } => query_member_count(deps.storage, key),
             QueryMsg::ValidCodes { codes } => query_valid_codes(deps.storage, codes),
             _ => viewing_keys_queries(deps, msg),
         },
@@ -753,13 +752,14 @@ fn query_minters(deps: Deps) -> StdResult<Binary> {
     to_binary(&response)
 }
 
-fn query_member_count(storage: &dyn Storage, key: String) -> StdResult<Binary> {
-    super::amber::special::check_special_key(storage, key)?;
-
-    let members = OneAmberStore::get_member_count(storage);
-    let response = QueryMemberCountResponse { members };
-    to_binary(&response)
-}
+// Removed for privacy concerns.
+// fn query_member_count(storage: &dyn Storage, key: String) -> StdResult<Binary> {
+//     super::amber::special::check_special_key(storage, key)?;
+//
+//     let members = OneAmberStore::get_member_count(storage);
+//     let response = QueryMemberCountResponse { members };
+//     to_binary(&response)
+// }
 
 fn query_member_code(deps: Deps, account: String) -> StdResult<Binary> {
     // Notice that if query_member_code() was called by a viewing-key call, the address of

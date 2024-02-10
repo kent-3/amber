@@ -13,7 +13,8 @@ use secret_toolkit_crypto::{sha_256, Prng, SHA256_HASH_SIZE};
 use crate::batch;
 use crate::msg::{
     AllowanceGivenResult, AllowanceReceivedResult, ContractStatusLevel, Decoyable, ExecuteAnswer,
-    ExecuteMsg, InstantiateMsg, QueryAnswer, QueryMsg, QueryWithPermit, ResponseStatus::Success,
+    ExecuteMsg, InstantiateMsg, MigrateAnswer, MigrateMsg, QueryAnswer, QueryMsg, QueryWithPermit,
+    ResponseStatus::Success,
 };
 use crate::receiver::Snip20ReceiveMsg;
 use crate::state::{
@@ -28,6 +29,15 @@ use crate::transaction_history::{
 /// We make sure that responses from `handle` are padded to a multiple of this size.
 pub const RESPONSE_BLOCK_SIZE: usize = 256;
 pub const PREFIX_REVOKED_PERMITS: &str = "revoked_permits";
+
+#[entry_point]
+pub fn migrate(_deps: DepsMut, _env: Env, msg: MigrateMsg) -> StdResult<Response> {
+    match msg {
+        MigrateMsg::Migrate {} => {
+            Ok(Response::new().set_data(to_binary(&MigrateAnswer::Migrate { status: Success })?))
+        }
+    }
+}
 
 #[entry_point]
 pub fn instantiate(

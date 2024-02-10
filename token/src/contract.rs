@@ -75,7 +75,6 @@ pub fn instantiate(
     let mut total_supply: u128 = 0;
 
     let prng_seed_hashed = sha_256(&msg.prng_seed.0);
-    PrngStore::save(deps.storage, prng_seed_hashed)?;
 
     {
         let admin = deps.api.addr_canonicalize(admin.as_str())?;

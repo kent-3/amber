@@ -1133,8 +1133,8 @@ function redeem_receiver() {
     redeem_tx="$(wait_for_tx "$tx_hash" "waiting for redeem from receiver at \"$receiver_addr\" to process")"
     # log "$redeem_tx"
     transfer_attributes="$(jq -r '.logs[0].events[] | select(.type == "transfer") | .attributes' <<<"$redeem_tx")"
-    assert_eq "$(jq -r '.[] | select(.key == "recipient") | .value' <<<"$transfer_attributes" | tr -d '\r')" "$receiver_addr"$'\n'"$to_addr"
-    assert_eq "$(jq -r '.[] | select(.key == "amount") | .value' <<<"$transfer_attributes" | tr -d '\r')" "${amount}uscrt"$'\n'"${amount}uscrt"
+    assert_eq "$(jq -r '.[] | select(.key == "recipient") | .value' <<<"$transfer_attributes")" "$receiver_addr"$'\n'"$to_addr"
+    assert_eq "$(jq -r '.[] | select(.key == "amount") | .value' <<<"$transfer_attributes")" "${amount}uscrt"$'\n'"${amount}uscrt"
     log "redeem response for \"$receiver_addr\" returned ${amount}uscrt"
 }
 
@@ -1670,7 +1670,7 @@ function measure_transfer_gas() {
     # Notice the `!` before the command - it is EXPECTED to fail.
     ! transfer_response="$(wait_for_compute_tx "$tx_hash" 'waiting for transfer from "a" to "b" to process')"
      ! transfer_response_not_compute="$(wait_for_tx "$tx_hash" 'waiting for transfer from "a" to "b" to process')"
-
+    
     assert_ne "$(get_balance "$contract_addr" 'b')" $b_balance
 
     echo $transfer_response_not_compute
@@ -1696,10 +1696,10 @@ function measure_transfer_with_decoys_gas() {
     # Notice the `!` before the command - it is EXPECTED to fail.
     ! transfer_response="$(wait_for_compute_tx "$tx_hash" 'waiting for transfer from "a" to "b" to process')"
     ! transfer_response_not_compute="$(wait_for_tx "$tx_hash" 'waiting for transfer from "a" to "b" to process')"
-
+    
     echo $transfer_response_not_compute
     assert_ne "$(get_balance "$contract_addr" 'b')" $b_balance
-
+    
     # echo "$(extract_gas "$transfer_response")"
 }
 

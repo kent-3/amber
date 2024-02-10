@@ -16,19 +16,6 @@ pub struct InitialBalance {
     pub amount: Uint128,
 }
 
-#[cfg_attr(test, derive(Eq, PartialEq))]
-#[derive(Serialize, Deserialize, Clone, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum MigrateMsg {
-    Migrate {},
-}
-
-#[derive(Serialize, Deserialize, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum MigrateAnswer {
-    Migrate { status: ResponseStatus },
-}
-
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct InstantiateMsg {
     pub name: String,
@@ -480,31 +467,19 @@ pub enum QueryMsg {
         key: String,
         page: Option<u32>,
         page_size: u32,
-        // I made this optional
-        should_filter_decoys: Option<bool>,
+        should_filter_decoys: bool,
     },
     TransactionHistory {
         address: String,
         key: String,
         page: Option<u32>,
         page_size: u32,
-        // I made this optional
-        should_filter_decoys: Option<bool>,
+        should_filter_decoys: bool,
     },
     Minters {},
     WithPermit {
         permit: Permit,
         query: QueryWithPermit,
-    },
-    MemberCount {
-        key: String,
-    },
-    MemberCode {
-        address: String,
-        key: String,
-    },
-    ValidCodes {
-        codes: Vec<String>,
     },
 }
 
@@ -542,10 +517,6 @@ impl QueryMsg {
                 let spender = api.addr_validate(spender.as_str())?;
                 Ok((vec![spender], key.clone()))
             }
-            Self::MemberCode { address, key } => {
-                let address = api.addr_validate(address.as_str())?;
-                Ok((vec![address], key.clone()))
-            }
             _ => panic!("This query type does not require authentication"),
         }
     }
@@ -573,14 +544,13 @@ pub enum QueryWithPermit {
     TransferHistory {
         page: Option<u32>,
         page_size: u32,
-        should_filter_decoys: Option<bool>,
+        should_filter_decoys: bool,
     },
     TransactionHistory {
         page: Option<u32>,
         page_size: u32,
-        should_filter_decoys: Option<bool>,
+        should_filter_decoys: bool,
     },
-    MemberCode {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug)]
@@ -642,31 +612,6 @@ pub enum QueryAnswer {
     },
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
-pub struct QueryMemberCountResponse {
-    pub members: u32,
-}
-
-#[derive(Serialize, Deserialize, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
-pub struct QueryMemberCodeResponse {
-    pub code: String,
-}
-
-#[derive(Serialize, Deserialize, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
-pub struct QueryValidCodesResponse {
-    pub valid_codes: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
-pub struct CodeStatus {
-    pub code: String,
-    pub status: bool,
-}
-
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
 pub struct AllowanceGivenResult {
     pub spender: Addr,
@@ -697,7 +642,7 @@ pub enum ContractStatusLevel {
     StopAll,
 }
 
-pub fn status_level_to_u8(status_level: &ContractStatusLevel) -> u8 {
+pub fn status_level_to_u8(status_level: ContractStatusLevel) -> u8 {
     match status_level {
         ContractStatusLevel::NormalRun => 0,
         ContractStatusLevel::StopAllButRedeems => 1,

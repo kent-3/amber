@@ -56,15 +56,14 @@ compile-optimized: _compile-optimized contract.wasm.gz
 _compile-optimized:
 	RUSTFLAGS='-C link-arg=-s' cargo build --release --target wasm32-unknown-unknown
 	@# The following line is not necessary, may work only on linux (extra size optimization)
-	# wasm-opt -Oz ./target/wasm32-unknown-unknown/release/*.wasm -o ./contract.wasm
+	wasm-opt -Oz ./target/wasm32-unknown-unknown/release/*.wasm -o ./contract.wasm
 
 .PHONY: compile-optimized-reproducible
 compile-optimized-reproducible:
 	docker run --rm -v "$$(pwd)":/contract \
 		--mount type=volume,source="$$(basename "$$(pwd)")_cache",target=/code/target \
 		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-		enigmampc/secret-contract-optimizer:1.0.10
-	sha256sum ./contract.wasm.gz > ./hash.txt
+		enigmampc/secret-contract-optimizer:1.0.7
 
 contract.wasm.gz: contract.wasm
 	cat ./contract.wasm | gzip -9 > ./contract.wasm.gz
@@ -77,7 +76,7 @@ start-server: # CTRL+C to stop
 	docker run -it --rm \
 		-p 9091:9091 -p 26657:26657 -p 26656:26656 -p 1317:1317 -p 5000:5000 \
 		-v $$(pwd):/root/code \
-		--name secretdev ghcr.io/scrtlabs/localsecret:v1.12.1
+		--name secretdev ghcr.io/scrtlabs/localsecret:v1.6.0-alpha.4
 
 .PHONY: schema
 schema:

@@ -69,7 +69,7 @@ contract.wasm.gz: contract.wasm
 	cat ./contract.wasm | gzip -9 > ./contract.wasm.gz
 
 contract.wasm:
-	cp ./target/wasm32-unknown-unknown/release/snip20_reference_impl.wasm ./contract.wasm
+	cp ./target/wasm32-unknown-unknown/release/snip20_amber_impl.wasm ./contract.wasm
 
 .PHONY: start-server
 start-server: # CTRL+C to stop

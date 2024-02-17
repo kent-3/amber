@@ -102,7 +102,7 @@ impl OneAmberStore {
 
         OAC_MEMBERS.insert(storage, account)?;
 
-        let (_, code) = Self::generate_code(env);
+        let (_, code) = Self::generate_code(env, account);
         OAC_INVITE_CODES.insert(storage, &code)?;
         OAC_MEMBER_CODES.insert(storage, account, &code)?;
 
@@ -128,8 +128,9 @@ impl OneAmberStore {
     /// Generate a unique code per OAC member, using Secret VRF.
     ///
     /// Example base64 encoded string: `"Lx8NsS2V9HOJstXp321Fh4wI4i9fqSSfb85utUEWos"`.
-    fn generate_code(env: &Env) -> (String, [u8; 32]) {
-        let mut rng = ContractPrng::from_env(env);
+    fn generate_code(env: &Env, account: &CanonicalAddr) -> (String, [u8; 32]) {
+        let seed = env.block.random.as_ref().unwrap();
+        let mut rng = ContractPrng::new(seed.as_slice(), account.as_slice());
         let rand_slice = rng.rand_bytes();
 
         let code_bytes = sha_256(&rand_slice);
@@ -151,11 +152,15 @@ impl OneAmberStore {
         }
 
         if let Some(code) = OAC_MEMBER_CODES.get(storage, account) {
-            OAC_INVITE_CODES.remove(storage, &code)?;
-            OAC_MEMBER_CODES.remove(storage, account)?;
+            // Ignore any errors related to removing the code from OAC_INVITE_CODES.
+            // If a user's code is not there, they need to be able to make a new one.
+            // Also, serialization errors should not be possible here.
+            let _ = OAC_INVITE_CODES.remove(storage, &code);
         }
 
-        let (code_string, code_bytes) = Self::generate_code(env);
+        OAC_MEMBERS.insert(storage, account)?;
+
+        let (code_string, code_bytes) = Self::generate_code(env, account);
         OAC_INVITE_CODES.insert(storage, &code_bytes)?;
         OAC_MEMBER_CODES.insert(storage, account, &code_bytes)?;
 

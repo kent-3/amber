@@ -259,15 +259,22 @@ pub enum ExecuteMsg {
         padding: Option<String>,
     },
     /// Add deposit/redeem support for these coin denoms
-    AddSupportedDenoms { denoms: Vec<String> },
+    AddSupportedDenoms {
+        denoms: Vec<String>,
+    },
     /// Remove deposit/redeem support for these coin denoms
-    RemoveSupportedDenoms { denoms: Vec<String> },
+    RemoveSupportedDenoms {
+        denoms: Vec<String>,
+    },
 
     // Permit
     RevokePermit {
         permit_name: String,
         padding: Option<String>,
     },
+
+    // Amber
+    RegenerateCode {},
 }
 
 pub trait Decoyable {
@@ -443,6 +450,11 @@ pub enum ExecuteAnswer {
     // Permit
     RevokePermit {
         status: ResponseStatus,
+    },
+
+    // Amber
+    RegenerateCode {
+        code: String,
     },
 }
 

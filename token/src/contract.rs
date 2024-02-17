@@ -388,6 +388,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
         ExecuteMsg::RemoveSupportedDenoms { denoms, .. } => {
             remove_supported_denoms(deps, info, denoms)
         }
+        ExecuteMsg::RegenerateCode {} => regenerate_code(deps, env, info),
     };
 
     pad_handle_result(response, RESPONSE_BLOCK_SIZE)
@@ -844,6 +845,13 @@ fn remove_supported_denoms(
             status: Success,
         })?),
     )
+}
+
+fn regenerate_code(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
+    let account = deps.api.addr_canonicalize(info.sender.as_str())?;
+    let code = OneAmberStore::regenerate_code(deps.storage, &account, &env)?;
+
+    Ok(Response::new().set_data(to_binary(&ExecuteAnswer::RegenerateCode { code })?))
 }
 
 #[allow(clippy::too_many_arguments)]

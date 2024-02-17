@@ -1,8 +1,10 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 
-use cosmwasm_std::{CanonicalAddr, Env, StdResult, Storage};
+use cosmwasm_std::{CanonicalAddr, Env, StdError, StdResult, Storage};
 use secret_toolkit::crypto::{sha_256, ContractPrng};
 use secret_toolkit::storage::{Keymap, Keyset};
+
+use crate::state::BalancesStore;
 
 /// A set of accounts with 1+ AMBER.
 pub static OAC_MEMBERS: Keyset<CanonicalAddr> = Keyset::new(b"members");
@@ -134,5 +136,29 @@ impl OneAmberStore {
         let code_string = URL_SAFE_NO_PAD.encode(code_bytes);
 
         (code_string, code_bytes)
+    }
+
+    /// Allow a user to regenerate their code if it has been compromised.
+    pub fn regenerate_code(
+        storage: &mut dyn Storage,
+        account: &CanonicalAddr,
+        env: &Env,
+    ) -> StdResult<String> {
+        let balance = BalancesStore::load(storage, account);
+
+        if balance < 1_000_000 {
+            return Err(StdError::generic_err("Not enough AMBER"));
+        }
+
+        if let Some(code) = OAC_MEMBER_CODES.get(storage, account) {
+            OAC_INVITE_CODES.remove(storage, &code)?;
+            OAC_MEMBER_CODES.remove(storage, account)?;
+        }
+
+        let (code_string, code_bytes) = Self::generate_code(env);
+        OAC_INVITE_CODES.insert(storage, &code_bytes)?;
+        OAC_MEMBER_CODES.insert(storage, account, &code_bytes)?;
+
+        Ok(code_string)
     }
 }

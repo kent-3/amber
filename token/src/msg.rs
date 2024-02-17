@@ -16,6 +16,19 @@ pub struct InitialBalance {
     pub amount: Uint128,
 }
 
+#[cfg_attr(test, derive(Eq, PartialEq))]
+#[derive(Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MigrateMsg {
+    Migrate {},
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum MigrateAnswer {
+    Migrate { status: ResponseStatus },
+}
+
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct InstantiateMsg {
     pub name: String,
@@ -246,15 +259,22 @@ pub enum ExecuteMsg {
         padding: Option<String>,
     },
     /// Add deposit/redeem support for these coin denoms
-    AddSupportedDenoms { denoms: Vec<String> },
+    AddSupportedDenoms {
+        denoms: Vec<String>,
+    },
     /// Remove deposit/redeem support for these coin denoms
-    RemoveSupportedDenoms { denoms: Vec<String> },
+    RemoveSupportedDenoms {
+        denoms: Vec<String>,
+    },
 
     // Permit
     RevokePermit {
         permit_name: String,
         padding: Option<String>,
     },
+
+    // Amber
+    RegenerateCode {},
 }
 
 pub trait Decoyable {
@@ -431,6 +451,11 @@ pub enum ExecuteAnswer {
     RevokePermit {
         status: ResponseStatus,
     },
+
+    // Amber
+    RegenerateCode {
+        code: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -467,19 +492,28 @@ pub enum QueryMsg {
         key: String,
         page: Option<u32>,
         page_size: u32,
-        should_filter_decoys: bool,
+        // I made this optional
+        should_filter_decoys: Option<bool>,
     },
     TransactionHistory {
         address: String,
         key: String,
         page: Option<u32>,
         page_size: u32,
-        should_filter_decoys: bool,
+        // I made this optional
+        should_filter_decoys: Option<bool>,
     },
     Minters {},
     WithPermit {
         permit: Permit,
         query: QueryWithPermit,
+    },
+    MemberCode {
+        address: String,
+        key: String,
+    },
+    ValidCodes {
+        codes: Vec<String>,
     },
 }
 
@@ -517,6 +551,10 @@ impl QueryMsg {
                 let spender = api.addr_validate(spender.as_str())?;
                 Ok((vec![spender], key.clone()))
             }
+            Self::MemberCode { address, key } => {
+                let address = api.addr_validate(address.as_str())?;
+                Ok((vec![address], key.clone()))
+            }
             _ => panic!("This query type does not require authentication"),
         }
     }
@@ -544,13 +582,14 @@ pub enum QueryWithPermit {
     TransferHistory {
         page: Option<u32>,
         page_size: u32,
-        should_filter_decoys: bool,
+        should_filter_decoys: Option<bool>,
     },
     TransactionHistory {
         page: Option<u32>,
         page_size: u32,
-        should_filter_decoys: bool,
+        should_filter_decoys: Option<bool>,
     },
+    MemberCode {},
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug)]
@@ -610,6 +649,12 @@ pub enum QueryAnswer {
     Minters {
         minters: Vec<Addr>,
     },
+    MemberCode {
+        code: String,
+    },
+    ValidCodes {
+        codes: Vec<String>,
+    },
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug)]
@@ -642,7 +687,7 @@ pub enum ContractStatusLevel {
     StopAll,
 }
 
-pub fn status_level_to_u8(status_level: ContractStatusLevel) -> u8 {
+pub fn status_level_to_u8(status_level: &ContractStatusLevel) -> u8 {
     match status_level {
         ContractStatusLevel::NormalRun => 0,
         ContractStatusLevel::StopAllButRedeems => 1,

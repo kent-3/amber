@@ -3,9 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use snip20_reference_impl::msg::{
-    ExecuteAnswer, ExecuteMsg, InstantiateMsg, QueryAnswer, QueryMsg,
-};
+use snip20_amber_impl::msg::{ExecuteAnswer, ExecuteMsg, InstantiateMsg, QueryAnswer, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
